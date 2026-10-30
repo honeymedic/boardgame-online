@@ -18,8 +18,8 @@ export function Card3D({ position, rotation, character = null, faceUp = false })
       <boxGeometry args={[PROPS.cardWidth, PROPS.cardThickness, PROPS.cardHeight]} />
       <meshStandardMaterial attach="material-0" color={edge} />
       <meshStandardMaterial attach="material-1" color={edge} />
-      <meshStandardMaterial key={top ? "tex" : "flat"} attach="material-2" map={top} color={top ? "#ffffff" : PROPS.cardBackColor} roughness={0.6} />
-      <meshStandardMaterial key={bottom ? "tex" : "flat"} attach="material-3" map={bottom} color={bottom ? "#ffffff" : PROPS.cardBackColor} roughness={0.6} />
+      <meshStandardMaterial key={`top-${top ? "tex" : "flat"}`} attach="material-2" map={top} color={top ? "#ffffff" : PROPS.cardBackColor} roughness={0.6} />
+      <meshStandardMaterial key={`bottom-${bottom ? "tex" : "flat"}`} attach="material-3" map={bottom} color={bottom ? "#ffffff" : PROPS.cardBackColor} roughness={0.6} />
       <meshStandardMaterial attach="material-4" color={edge} />
       <meshStandardMaterial attach="material-5" color={edge} />
     </mesh>
@@ -37,7 +37,7 @@ export function Deck3D({ cards = 11 }) {
       <boxGeometry args={[PROPS.cardWidth, h, PROPS.cardHeight]} />
       <meshStandardMaterial attach="material-0" color={side} />
       <meshStandardMaterial attach="material-1" color={side} />
-      <meshStandardMaterial key={back ? "tex" : "flat"} attach="material-2" map={back} color={back ? "#ffffff" : side} roughness={0.6} />
+      <meshStandardMaterial key={`back-${back ? "tex" : "flat"}`} attach="material-2" map={back} color={back ? "#ffffff" : side} roughness={0.6} />
       <meshStandardMaterial attach="material-3" color={side} />
       <meshStandardMaterial attach="material-4" color={side} />
       <meshStandardMaterial attach="material-5" color={side} />
@@ -53,8 +53,8 @@ export function Coin3D({ position, rotation }) {
     <mesh position={position} rotation={rotation} castShadow>
       <cylinderGeometry args={[PROPS.coinRadius, PROPS.coinRadius, PROPS.coinThickness, 32]} />
       <meshStandardMaterial attach="material-0" color={PROPS.coinColor} metalness={0.8} roughness={0.35} />
-      <meshStandardMaterial key={front ? "tex" : "flat"} attach="material-1" map={front} color={front ? "#ffffff" : PROPS.coinColor} metalness={0.6} roughness={0.4} />
-      <meshStandardMaterial key={back ? "tex" : "flat"} attach="material-2" map={back} color={back ? "#ffffff" : PROPS.coinColor} metalness={0.6} roughness={0.4} />
+      <meshStandardMaterial key={`front-${front ? "tex" : "flat"}`} attach="material-1" map={front} color={front ? "#ffffff" : PROPS.coinColor} metalness={0.6} roughness={0.4} />
+      <meshStandardMaterial key={`back-${back ? "tex" : "flat"}`} attach="material-2" map={back} color={back ? "#ffffff" : PROPS.coinColor} metalness={0.6} roughness={0.4} />
     </mesh>
   );
 }

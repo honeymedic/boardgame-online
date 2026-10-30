@@ -1,93 +1,85 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { PROPS, PICKUP } from "./config.js";
+import { PROPS, PICKUP, HAND } from "./config.js";
 import { useCardTexture } from "./textures.js";
+import { crosshair, interactables } from "./input.js";
 
 /**
- * 내 손패 카드 한 장. 테이블에 뒷면으로 놓여 있다가, 클릭하면 눈앞으로 들어 올려 앞면을 보여주고,
+ * 내 손패 카드 한 장. 테이블에 뒷면으로 놓여 있다가, 조준점을 맞추고 클릭하면 왼손 위치로 들어 올려 앞면을 보여주고,
  * 다시 클릭하면 제자리에 뒷면으로 내려놓는다. 들고 있는 동안 고개를 돌리면 카드가 시야를 따라온다.
  *
- * restPosition: 부모(자리 그룹) 기준 놓인 위치. 부모가 자리 방향으로 회전해 있어도 된다.
- * character:    앞면에 그릴 캐릭터. 상대방 카드는 이 컴포넌트를 쓰지 않는다 (Card3D 사용).
+ * restPosition: 부모(자리 그룹) 기준 놓인 위치
+ * character:    앞면에 그릴 캐릭터
+ * index:        손패 번호 (0, 1). 들었을 때 onPickChange(index), 놓으면 onPickChange(null)
+ * held:         외부(부모)가 아는 현재 든 카드 번호. 한 번에 한 장만 들 수 있게 한다.
  */
-export default function HandCard({ restPosition, character, onPickChange }) {
+export default function HandCard({ restPosition, character, index, held, onPickChange }) {
   const meshRef = useRef();
-  const [picked, setPicked] = useState(false);
   const [hovered, setHovered] = useState(false);
   const { camera } = useThree();
+  const picked = held === index;
+  const otherHeld = held != null && held !== index;
 
   const front = useCardTexture(character);
   const back = useCardTexture(null);
 
-  // 재사용 임시 객체 (매 프레임 new 하지 않기 위해)
   const tmp = useRef({
     pos: new THREE.Vector3(),
     quat: new THREE.Quaternion(),
-    fwd: new THREE.Vector3(),
     parentQuat: new THREE.Quaternion(),
     flip: new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), Math.PI / 2),
     rest: new THREE.Vector3(...restPosition),
     restQuat: new THREE.Quaternion(),
   }).current;
 
+  // 조준점으로 집을 수 있는 물체로 등록
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh) return;
+    mesh.userData.onInteract = () => {
+      if (otherHeld) return; // 다른 카드를 들고 있으면 먼저 내려놓아야 함
+      onPickChange?.(picked ? null : index);
+    };
+    interactables.add(mesh);
+    return () => {
+      interactables.delete(mesh);
+    };
+  }, [picked, otherHeld, index, onPickChange]);
+
   useFrame((_, dt) => {
     const mesh = meshRef.current;
     if (!mesh || !mesh.parent) return;
-    const k = 1 - Math.exp(-PICKUP.speed * dt); // 프레임 속도와 무관한 부드러운 보간
+    const k = 1 - Math.exp(-PICKUP.speed * dt);
+
+    // 조준점이 이 카드 위에 있는지
+    const isHover = crosshair.object === mesh && !picked && !otherHeld;
+    if (isHover !== hovered) setHovered(isHover);
 
     if (picked) {
-      // 목표: 카메라 앞 조금 아래. 세계 좌표로 구한 뒤 부모(자리 그룹) 좌표로 바꾼다.
-      camera.getWorldDirection(tmp.fwd);
-      tmp.pos.copy(camera.position).addScaledVector(tmp.fwd, PICKUP.distance);
-      tmp.pos.y -= PICKUP.drop;
+      // 목표: 왼손 위치 (카메라 기준). 세계 좌표로 구한 뒤 부모 좌표로
+      tmp.pos.set(...HAND.cardHoldOffset).applyQuaternion(camera.quaternion).add(camera.position);
       mesh.parent.worldToLocal(tmp.pos);
-
       // 카드 윗면(+Y)이 카메라를 향하도록: 카메라 회전 × X축 90도
       tmp.quat.copy(camera.quaternion).multiply(tmp.flip);
       mesh.parent.getWorldQuaternion(tmp.parentQuat).invert();
       tmp.quat.premultiply(tmp.parentQuat);
-
       mesh.position.lerp(tmp.pos, k);
       mesh.quaternion.slerp(tmp.quat, k);
     } else {
-      // 제자리로. 올려둔 상태(hover)면 살짝 떠 있게
       tmp.pos.copy(tmp.rest);
-      if (hovered) tmp.pos.y += PICKUP.hoverLift;
+      if (isHover) tmp.pos.y += PICKUP.hoverLift;
       mesh.position.lerp(tmp.pos, k);
       mesh.quaternion.slerp(tmp.restQuat, k);
     }
   });
 
-  const toggle = (e) => {
-    e.stopPropagation();
-    const next = !picked;
-    setPicked(next);
-    onPickChange?.(next);
-  };
-
-  // 들었을 때는 윗면이 앞그림, 놓여 있을 때는 윗면이 뒷그림
   const top = picked ? front : back;
   const bottom = picked ? back : front;
-  const edge = PROPS.cardEdgeColor;
+  const edge = hovered ? PICKUP.hoverEdgeColor : PROPS.cardEdgeColor;
 
   return (
-    <mesh
-      ref={meshRef}
-      position={restPosition}
-      castShadow
-      receiveShadow
-      onClick={toggle}
-      onPointerOver={(e) => {
-        e.stopPropagation();
-        setHovered(true);
-        document.body.style.cursor = "pointer";
-      }}
-      onPointerOut={() => {
-        setHovered(false);
-        document.body.style.cursor = "";
-      }}
-    >
+    <mesh ref={meshRef} position={restPosition} castShadow receiveShadow>
       <boxGeometry args={[PROPS.cardWidth, PROPS.cardThickness, PROPS.cardHeight]} />
       <meshStandardMaterial attach="material-0" color={edge} />
       <meshStandardMaterial attach="material-1" color={edge} />

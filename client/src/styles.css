@@ -400,3 +400,14 @@ button.danger { border-color: var(--error); color: var(--error); }
 .speech.emote { font-size: 30px; padding: 6px 10px; background: transparent; box-shadow: none; }
 @keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .speech-anchor { transform: translate(-50%, -100%); }
+
+/* 3D 조준점 */
+.crosshair {
+  position: absolute; left: 50%; top: 50%;
+  width: 6px; height: 6px; margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.9);
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.35);
+  pointer-events: none;
+}
+.crosshair.idle { opacity: 0.35; }

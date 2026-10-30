@@ -131,6 +131,24 @@ io.on("connection", (socket) => {
     io.to(socket.data.code).emit("emote", { playerId, emoji, ts: Date.now() });
   });
 
+  // 손 위치 중계: { x, y, z, hold } — 오른손 세계 좌표와 왼손에 든 카드 번호(없으면 null). 저장 안 함.
+  socket.on("hand", (d) => {
+    if (!socket.data.code) return;
+    const x = Number(d?.x), y = Number(d?.y), z = Number(d?.z);
+    if (![x, y, z].every(Number.isFinite)) return;
+    const hold = Number.isInteger(d?.hold) ? d.hold : null;
+    socket.to(socket.data.code).emit("hand", { playerId, x, y, z, hold });
+  });
+
+  // 손 동작 중계: { type, target: [x,y,z] } — 예: 좌클릭 휘두르기
+  socket.on("gesture", (d) => {
+    if (!socket.data.code) return;
+    const type = String(d?.type ?? "").slice(0, 16);
+    const target = Array.isArray(d?.target) && d.target.length === 3 && d.target.every(Number.isFinite) ? d.target : null;
+    if (!type) return;
+    socket.to(socket.data.code).emit("gesture", { playerId, type, target, ts: Date.now() });
+  });
+
   // 시선(고개 방향) 중계. 게임 상태와 무관하고 저장하지 않는다. 같은 방 다른 사람에게만 그대로 전달.
   socket.on("look", (data) => {
     if (!socket.data.code) return;

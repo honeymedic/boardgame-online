@@ -23,8 +23,9 @@ export const CAMERA = {
   pitchMin: -0.7, // 아래로 내려다보는 한계 (라디안)
   pitchMax: 0.4, // 위로 올려다보는 한계
   yawLimit: 1.9, // 정면 기준 좌우로 돌릴 수 있는 한계 (라디안, 약 110도)
-  dragSensitivity: 0.0045, // 마우스 드래그 감도
-  dragDeadzone: 6, // 이만큼(px) 움직이기 전까지는 클릭으로 보고 시점을 돌리지 않음
+  dragSensitivity: 0.0045, // 터치 드래그 감도 (모바일)
+  dragDeadzone: 6, // 이만큼(px) 움직이기 전까지는 탭으로 보고 시점을 돌리지 않음 (모바일)
+  mouseSensitivity: 0.0022, // 마우스 잠금 상태에서의 회전 감도 (PC)
   keySpeed: 1.6, // 방향키 회전 속도 (라디안/초)
 };
 
@@ -105,5 +106,27 @@ export const PICKUP = {
   drop: 0.1, // 시선보다 아래로 내리는 정도
   speed: 9, // 들어 올리고 내려놓는 속도. 클수록 빠름
   hoverLift: 0.015, // 마우스를 올렸을 때 살짝 뜨는 높이
+  hoverEdgeColor: "#ffd166", // 조준점이 카드 위에 있을 때 테두리 색
   liftBrightness: 0.55, // 들어 올린 카드 밝기 보정 (0이면 보정 없음)
+};
+
+// 손과 팔
+export const HAND = {
+  sendInterval: 80, // 손 위치 전송 간격 (ms)
+  keepalive: 2000,
+  reach: 0.78, // 팔을 뻗을 수 있는 최대 거리 (어깨 기준)
+  upperLength: 0.32, // 위팔 길이
+  foreLength: 0.3, // 아래팔 길이
+  armRadius: 0.045,
+  handRadius: 0.05,
+  shoulderOffset: [0.26, 0.42, 0], // 몸통 중심 기준 어깨 위치 (x는 좌우 대칭으로 씀), y는 의자 위 기준
+  // 1인칭에서 내 어깨가 카메라 기준 어디에 있는지 (오른쪽, 아래, 뒤)
+  myRightShoulder: [0.22, -0.34, 0.0],
+  myLeftShoulder: [-0.22, -0.34, 0.0],
+  // 왼손으로 카드를 들었을 때 카드 위치 (카메라 기준: 왼쪽, 아래, 앞)
+  cardHoldOffset: [-0.17, -0.1, -0.4],
+  hoverHeight: 0.05, // 손이 테이블 위를 떠다니는 높이
+  smoothing: 14, // 손이 목표를 따라가는 속도
+  swingDuration: 0.38, // 휘두르기 동작 시간 (초)
+  swingOvershoot: 0.18, // 휘두를 때 목표보다 더 뻗는 거리
 };

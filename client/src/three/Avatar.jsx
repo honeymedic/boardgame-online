@@ -1,7 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
-import { AVATAR, SEAT } from "./config.js";
+import * as THREE from "three";
+import { AVATAR, SEAT, HAND } from "./config.js";
+import { Arm } from "./Hands.jsx";
 
 /**
  * 단순 기하 도형 아바타. 몸통(캡슐) + 머리(구) + 눈 2개.
@@ -11,8 +13,42 @@ import { AVATAR, SEAT } from "./config.js";
  *  lookRef   { current: { yaw, pitch } }  이 사람의 실제 시선(절대 각도). 없으면 정면.
  *  nickname, connected, highlight
  */
-export default function Avatar({ seat, avatar, lookRef, nickname, connected = true, highlight = false, bubble = null }) {
+export default function Avatar({ seat, avatar, lookRef, handRef, nickname, connected = true, highlight = false, bubble = null }) {
   const headRef = useRef();
+  const groupRef = useRef();
+
+  // 팔 목표 (아바타 로컬 좌표). handRef.current = { pos: Vector3(세계) | null, hold, swing: {start, target: Vector3(세계)} | null }
+  const rightShoulder = useMemo(() => new THREE.Vector3(HAND.shoulderOffset[0], SEAT_HEIGHT + HAND.shoulderOffset[1], HAND.shoulderOffset[2]), []);
+  const leftShoulder = useMemo(() => new THREE.Vector3(-HAND.shoulderOffset[0], SEAT_HEIGHT + HAND.shoulderOffset[1], HAND.shoulderOffset[2]), []);
+  const rightTarget = useMemo(() => new THREE.Vector3(0.28, SEAT_HEIGHT + 0.3, -0.35), []); // 기본: 테이블 위 휴식
+  const leftTarget = useMemo(() => new THREE.Vector3(-0.28, SEAT_HEIGHT + 0.3, -0.35), []);
+  const [holding, setHolding] = useState(false);
+  const tmpV = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(() => {
+    const g = groupRef.current;
+    const h = handRef?.current;
+    if (!g) return;
+    // 오른손
+    if (h?.swing && performance.now() - h.swing.start < HAND.swingDuration * 1000 && h.swing.target) {
+      const p = (performance.now() - h.swing.start) / (HAND.swingDuration * 1000);
+      tmpV.copy(h.swing.target);
+      g.worldToLocal(tmpV);
+      // 현재 손 위치에서 목표로 갔다가 돌아오는 궤적
+      rightTarget.lerp(tmpV, Math.sin(p * Math.PI) * 0.9 + 0.1);
+    } else if (h?.pos) {
+      tmpV.copy(h.pos);
+      g.worldToLocal(tmpV);
+      rightTarget.copy(tmpV);
+    } else {
+      rightTarget.set(0.28, SEAT_HEIGHT + 0.3, -0.35);
+    }
+    // 왼손: 카드를 들었으면 얼굴 앞으로 올림
+    const isHolding = h?.hold != null;
+    if (isHolding !== holding) setHolding(isHolding);
+    if (isHolding) leftTarget.set(-0.22, SEAT_HEIGHT + AVATAR.bodyHeight + 0.05, -0.3);
+    else leftTarget.set(-0.28, SEAT_HEIGHT + 0.3, -0.35);
+  });
 
   // 말풍선: 새 발언/이모지가 오면 잠시 보였다가 사라진다
   const [showBubble, setShowBubble] = useState(false);
@@ -40,7 +76,10 @@ export default function Avatar({ seat, avatar, lookRef, nickname, connected = tr
   const opacity = connected ? 1 : 0.35;
 
   return (
-    <group position={seat.position} rotation={[0, seat.yaw, 0]}>
+    <group ref={groupRef} position={seat.position} rotation={[0, seat.yaw, 0]}>
+      {/* 팔 */}
+      <Arm shoulder={rightShoulder} target={rightTarget} bendHint={[0.5, -1, 0]} color={avatar.body} handColor={avatar.head} />
+      <Arm shoulder={leftShoulder} target={leftTarget} bendHint={[-0.5, -1, 0]} color={avatar.body} handColor={avatar.head} holdingCard={holding} />
       {/* 의자 */}
       <mesh position={[0, SEAT_HEIGHT / 2, 0.05]} castShadow receiveShadow>
         <boxGeometry args={[0.45, SEAT_HEIGHT, 0.45]} />

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef } from "react";
-import { Canvas } from "@react-three/fiber";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useThree } from "@react-three/fiber";
 import { TABLE, PROPS, ROOM } from "./config.js";
 import { computeSeats, eyePosition, tableSpotFor } from "./seats.js";
 import Avatar from "./Avatar.jsx";
@@ -7,6 +7,9 @@ import FirstPersonLook from "./FirstPersonLook.jsx";
 import StringLights from "./StringLights.jsx";
 import { Card3D, Deck3D, Coin3D } from "./Props3D.jsx";
 import HandCard from "./HandCard.jsx";
+import { MyHands } from "./Hands.jsx";
+import { installPointer } from "./input.js";
+import * as THREE from "three";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { STRING_LIGHTS } from "./config.js";
 import { socket, playerId } from "../socket.js";
@@ -46,11 +49,48 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
     return ref;
   };
 
+  // 다른 사람들의 손. { pos: Vector3|null, hold, swing }
+  const hands = useRef(new Map());
+  const getHandRef = (id) => {
+    let ref = hands.current.get(id);
+    if (!ref) {
+      ref = { current: { pos: null, hold: null, swing: null } };
+      hands.current.set(id, ref);
+    }
+    return ref;
+  };
+  useEffect(() => {
+    const onHand = ({ playerId: id, x, y, z, hold }) => {
+      const ref = getHandRef(id);
+      if (!ref.current.pos) ref.current.pos = new THREE.Vector3();
+      ref.current.pos.set(x, y, z);
+      ref.current.hold = hold;
+    };
+    const onGesture = ({ playerId: id, type, target }) => {
+      if (type !== "swing" || !target) return;
+      getHandRef(id).current.swing = { start: performance.now(), target: new THREE.Vector3(...target) };
+    };
+    socket.on("hand", onHand);
+    socket.on("gesture", onGesture);
+    return () => {
+      socket.off("hand", onHand);
+      socket.off("gesture", onGesture);
+    };
+  }, []);
+
+  // 내가 왼손에 든 카드 번호 (없으면 null)
+  const [myHold, setMyHold] = useState(null);
+  const me = players[myIndex];
+
   const sendLook = (look) => socket.emit("look", look);
+  const sendHand = (h) => socket.emit("hand", h);
+  const sendGesture = (g) => socket.emit("gesture", g);
 
   return (
     <Canvas shadows camera={{ fov: 60, near: 0.05, far: 50 }} style={{ background: ROOM.floorColor }}>
+      <PointerInstaller />
       <FirstPersonLook eye={eyePosition(mySeat)} baseYaw={mySeat.yaw} onLook={sendLook} />
+      <MyHands holdIndex={myHold} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
 
       <ambientLight intensity={ROOM.ambient} />
       <pointLight
@@ -76,13 +116,21 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
               seat={seats[i]}
               avatar={p.avatar}
               lookRef={getLookRef(p.id)}
+              handRef={getHandRef(p.id)}
               nickname={p.nickname}
               connected={p.connected}
               highlight={highlightId === p.id}
               bubble={bubbles[p.id]}
             />
           )}
-          <SeatProps seat={seats[i]} coins={2} mine={i === myIndex} hand={i === myIndex ? sampleHand(p.id) : null} />
+          <SeatProps
+            seat={seats[i]}
+            coins={2}
+            mine={i === myIndex}
+            hand={i === myIndex ? sampleHand(p.id) : null}
+            held={myHold}
+            onPickChange={setMyHold}
+          />
         </group>
       ))}
 
@@ -170,7 +218,14 @@ function sampleHand(id) {
 }
 
 /** 자리 앞에 놓인 카드 2장과 동전. 내 자리(mine)면 카드를 클릭해 집어 들 수 있다. */
-function SeatProps({ seat, coins, mine = false, hand = null }) {
+/** 캔버스에 입력 리스너(조준/잠금 상태)를 붙인다. Canvas 안에서만 gl을 얻을 수 있어서 별도 컴포넌트. */
+function PointerInstaller() {
+  const { gl } = useThree();
+  useEffect(() => installPointer(gl.domElement), [gl]);
+  return null;
+}
+
+function SeatProps({ seat, coins, mine = false, hand = null, held = null, onPickChange }) {
   const spot = tableSpotFor(seat, PROPS.cardDistanceFromEdge);
   const yaw = seat.yaw;
   return (
@@ -178,7 +233,7 @@ function SeatProps({ seat, coins, mine = false, hand = null }) {
       {[-1, 1].map((s, idx) => {
         const pos = [s * (PROPS.cardWidth / 2 + PROPS.cardGap / 2), PROPS.cardThickness / 2, 0];
         return mine ? (
-          <HandCard key={s} restPosition={pos} character={hand?.[idx] ?? null} />
+          <HandCard key={s} restPosition={pos} character={hand?.[idx] ?? null} index={idx} held={held} onPickChange={onPickChange} />
         ) : (
           <Card3D key={s} position={pos} />
         );
