@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "description": "친구들과 방 코드로 즐기는 온라인 보드게임 (첫 게임: 쿠)",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "concurrently -n server,client -c blue,green \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
     "install:all": "npm install && npm install --prefix server && npm install --prefix client",
