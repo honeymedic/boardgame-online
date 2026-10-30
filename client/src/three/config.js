@@ -79,8 +79,9 @@ export const STRING_LIGHTS = {
   haloSize: 0.16, // 전구 주변 빛무리 크기 (0이면 거의 안 보임)
   haloOpacity: 0.6, // 빛무리 진하기 (0~1)
   glow: 1.8, // 전구 밝기. 1 이상이면 중심이 하얗게 타면서 주변에 번짐이 생김 (사진의 전구 느낌)
-  twinkleSpeed: 0.8, // 깜빡임 속도 (0이면 깜빡임 없음)
-  twinkleAmount: 0.3, // 깜빡임 세기 (0~1)
+  twinkleSpeed: 3.0, // 깜빡임 속도 (0이면 깜빡임 없음)
+  twinkleAmount: 0.75, // 깜빡임 세기 (0~1). 1이면 완전히 꺼졌다 켜짐
+  twinkleSharpness: 4, // 깜빡임 모양. 1이면 부드러운 물결, 클수록 "반짝!" 하고 잦아드는 트리 전구 느낌
   // 빛 번짐 (네온 느낌의 핵심). 전구처럼 밝은 것만 번진다.
   bloom: true,
   bloomIntensity: 2.0, // 번짐 세기

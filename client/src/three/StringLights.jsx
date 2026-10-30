@@ -44,6 +44,8 @@ export default function StringLights() {
     });
   }, []);
 
+  const haloRefs = useRef([]);
+
   useFrame(({ clock }) => {
     const mesh = meshRef.current;
     if (!mesh) return;
@@ -54,10 +56,25 @@ export default function StringLights() {
       dummy.position.set(b.x, b.y, b.z);
       dummy.updateMatrix();
       mesh.setMatrixAt(i, dummy.matrix);
-      // 전구마다 위상을 다르게 해서 제각각 깜빡이게
-      const tw = S.twinkleSpeed > 0 ? 1 - S.twinkleAmount * (0.5 + 0.5 * Math.sin(t * S.twinkleSpeed + b.phase)) : 1;
-      colorObj.copy(baseColors[i]).multiplyScalar(S.glow * tw * b.brightness);
+
+      // 트리 전구식 깜빡임: 전구마다 속도/위상이 달라 제각각 반짝인다.
+      // sin 값을 거듭제곱해서 "잠깐 확 켜졌다가 천천히 잦아드는" 모양으로 만든다.
+      let tw = 1;
+      if (S.twinkleSpeed > 0) {
+        const wave = 0.5 + 0.5 * Math.sin(t * S.twinkleSpeed * b.speed + b.phase);
+        const spark = Math.pow(wave, S.twinkleSharpness);
+        tw = 1 - S.twinkleAmount + S.twinkleAmount * spark;
+      }
+      const level = S.glow * tw * b.brightness;
+      colorObj.copy(baseColors[i]).multiplyScalar(level);
       mesh.setColorAt(i, colorObj);
+
+      // 빛무리도 같이 커졌다 작아진다
+      const halo = haloRefs.current[i];
+      if (halo) {
+        const s = S.haloSize * b.brightness * (0.55 + 0.45 * tw);
+        halo.scale.set(s, s, 1);
+      }
     }
     mesh.instanceMatrix.needsUpdate = true;
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
@@ -77,6 +94,7 @@ export default function StringLights() {
       {bulbs.map((b, i) => (
         <sprite
           key={i}
+          ref={(el) => (haloRefs.current[i] = el)}
           material={haloMaterial}
           position={[b.x, b.y, b.z]}
           scale={[S.haloSize * b.brightness, S.haloSize * b.brightness, 1]}
@@ -120,6 +138,7 @@ function buildLayout() {
         z: a[2] + (b[2] - a[2]) * u,
         colorIndex: colorIndex++,
         phase: Math.random() * Math.PI * 2,
+        speed: 0.6 + Math.random() * 0.9, // 전구마다 깜빡이는 속도가 다르게
         brightness: 1 - S.warmVariation * Math.random(), // 전구마다 밝기 편차
       });
     }
