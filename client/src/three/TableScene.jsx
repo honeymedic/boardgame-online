@@ -1,45 +1,43 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { TABLE, PROPS, ROOM } from "./config.js";
+import * as THREE from "three";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { TABLE, PROPS, ROOM, STRING_LIGHTS, COINS } from "./config.js";
 import { computeSeats, eyePosition, tableSpotFor } from "./seats.js";
 import Avatar from "./Avatar.jsx";
 import FirstPersonLook from "./FirstPersonLook.jsx";
 import StringLights from "./StringLights.jsx";
-import { Card3D, Deck3D, Coin3D } from "./Props3D.jsx";
+import { Card3D, Deck3D } from "./Props3D.jsx";
 import HandCard from "./HandCard.jsx";
 import { MyHands } from "./Hands.jsx";
+import { CoinPile, CoinFlights, TABLE_TOP } from "./Coins.jsx";
 import { installPointer } from "./input.js";
-import * as THREE from "three";
-import { EffectComposer, Bloom } from "@react-three/postprocessing";
-import { STRING_LIGHTS } from "./config.js";
 import { socket, playerId } from "../socket.js";
 
 /**
  * 3D 테이블 장면.
- * players: room.players (id, nickname, avatar, connected)
+ *  players: room.players (id, nickname, avatar, connected)
+ *  game:    게임 중이면 서버가 준 내 시점의 게임 뷰 (없으면 로비 미리보기)
+ *  onCoinPrompt({max}|null): 동전 개수 선택 안내를 띄우거나 지우라는 요청 (DOM은 Table.jsx가 그림)
  * 내 자리는 players에서 내 index. 카메라는 그 자리에 앉아 있고, 내 아바타는 그리지 않는다.
  */
-export default function TableScene({ players, bubbles = {}, highlightId = null }) {
-  const seats = useMemo(() => computeSeats(players.length), [players.length]);
-  const myIndex = Math.max(0, players.findIndex((p) => p.id === playerId));
+export default function TableScene({ players, game = null, bubbles = {}, highlightId = null, onCoinPrompt }) {
+  // 게임 중에는 게임의 플레이어 순서(섞인 순서)를 따르고, 아바타/접속 정보는 방 정보에서 가져온다
+  const seatPlayers = useMemo(() => {
+    if (!game) return players.map((p) => ({ ...p, coins: 2, cards: null }));
+    return game.players.map((gp) => {
+      const rp = players.find((p) => p.id === gp.id) || {};
+      return { ...rp, ...gp, avatar: rp.avatar };
+    });
+  }, [players, game]);
+
+  const seats = useMemo(() => computeSeats(seatPlayers.length), [seatPlayers.length]);
+  const myIndex = Math.max(0, seatPlayers.findIndex((p) => p.id === playerId));
   const mySeat = seats[myIndex];
+  const me = seatPlayers[myIndex];
 
-  // 다른 사람들의 시선. 렌더링을 다시 일으키지 않도록 ref에 담아 두고 useFrame에서 읽는다.
+  // ── 다른 사람들의 시선 / 손 (렌더를 다시 일으키지 않게 ref에 담고 useFrame에서 읽는다) ──
   const looks = useRef(new Map());
-  useEffect(() => {
-    const onLook = ({ playerId: id, yaw, pitch }) => {
-      let ref = looks.current.get(id);
-      if (!ref) {
-        ref = { current: { yaw, pitch } };
-        looks.current.set(id, ref);
-      } else {
-        ref.current = { yaw, pitch };
-      }
-    };
-    socket.on("look", onLook);
-    return () => socket.off("look", onLook);
-  }, []);
-
   const getLookRef = (id) => {
     let ref = looks.current.get(id);
     if (!ref) {
@@ -48,51 +46,143 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
     }
     return ref;
   };
-
-  // 다른 사람들의 손. { pos: Vector3|null, hold, swing }
   const hands = useRef(new Map());
   const getHandRef = (id) => {
     let ref = hands.current.get(id);
     if (!ref) {
-      ref = { current: { pos: null, hold: null, swing: null } };
+      ref = { current: { pos: null, hold: null, coin: 0, swing: null } };
       hands.current.set(id, ref);
     }
     return ref;
   };
+
   useEffect(() => {
-    const onHand = ({ playerId: id, x, y, z, hold }) => {
+    const onLook = ({ playerId: id, yaw, pitch }) => {
+      getLookRef(id).current = { yaw, pitch };
+    };
+    const onHand = ({ playerId: id, x, y, z, hold, coin }) => {
       const ref = getHandRef(id);
       if (!ref.current.pos) ref.current.pos = new THREE.Vector3();
       ref.current.pos.set(x, y, z);
       ref.current.hold = hold;
+      ref.current.coin = Number(coin) || 0;
     };
     const onGesture = ({ playerId: id, type, target }) => {
       if (type !== "swing" || !target) return;
       getHandRef(id).current.swing = { start: performance.now(), target: new THREE.Vector3(...target) };
     };
+    socket.on("look", onLook);
     socket.on("hand", onHand);
     socket.on("gesture", onGesture);
     return () => {
+      socket.off("look", onLook);
       socket.off("hand", onHand);
       socket.off("gesture", onGesture);
     };
   }, []);
 
-  // 내가 왼손에 든 카드 번호 (없으면 null)
-  const [myHeld, setMyHeld] = useState([]); // 든 순서대로 카드 번호. 최대 2장
+  // ── 내가 든 것 ──
+  const [myHeld, setMyHeld] = useState([]); // 왼손 카드 (든 순서, 최대 2장)
+  const [coinHeld, setCoinHeld] = useState(0); // 오른손 동전 개수
+  const [coinPrompt, setCoinPrompt] = useState(null); // { max } 개수 선택 중
   const pickCard = (idx) => setMyHeld((h) => (h.includes(idx) || h.length >= 2 ? h : [...h, idx]));
-  const putDownAll = () => setMyHeld([]);
-  const me = players[myIndex];
+  const putDownAll = () => {
+    setMyHeld([]);
+    setCoinHeld(0);
+  };
+  const myCoins = (me?.coins ?? 2) - coinHeld;
+
+  // 동전 더미를 클릭 → 개수 선택 안내. 숫자 키로 고른다
+  const openCoinPrompt = () => {
+    if (myCoins <= 0) return;
+    setCoinPrompt({ max: myCoins });
+  };
+  useEffect(() => {
+    onCoinPrompt?.(coinPrompt);
+  }, [coinPrompt]);
+  useEffect(() => {
+    if (!coinPrompt) return;
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        setCoinPrompt(null);
+        return;
+      }
+      if (!/^[0-9]$/.test(e.key)) return;
+      e.preventDefault();
+      const n = e.key === "0" ? coinPrompt.max : Math.min(coinPrompt.max, Number(e.key));
+      if (n > 0) setCoinHeld((c) => c + n);
+      setCoinPrompt(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [coinPrompt]);
+
+  // 게임 상태가 바뀌면(턴 진행) 들고 있던 걸 내려놓는다
+  useEffect(() => {
+    if (game) {
+      setMyHeld([]);
+      setCoinHeld(0);
+    }
+  }, [game?.phase, game?.turnPlayerId]);
+
+  // ── 동전 이동 애니메이션: 게임 뷰가 바뀔 때 전후 동전 수를 비교한다 ──
+  const [flights, setFlights] = useState([]);
+  const prevCoins = useRef(null);
+  const flightId = useRef(0);
+  const bankWorld = useMemo(() => [COINS.bankPosition[0], TABLE_TOP, COINS.bankPosition[2]], []);
+
+  useEffect(() => {
+    if (!game) {
+      prevCoins.current = null;
+      return;
+    }
+    const now = new Map(game.players.map((p) => [p.id, p.coins]));
+    const prev = prevCoins.current;
+    prevCoins.current = now;
+    if (!prev) return;
+
+    const gained = [];
+    const lost = [];
+    for (const [id, c] of now) {
+      const d = c - (prev.get(id) ?? c);
+      if (d > 0) gained.push({ id, n: d });
+      else if (d < 0) lost.push({ id, n: -d });
+    }
+    const newFlights = [];
+    const start = performance.now();
+    const pileOf = (id) => coinPileWorld(seats[seatPlayers.findIndex((p) => p.id === id)]);
+    const push = (from, to, n) => {
+      for (let k = 0; k < n; k++) newFlights.push({ id: flightId.current++, from, to, start: start + k * COINS.flightStagger * 1000 });
+    };
+    // 잃은 사람 → 얻은 사람 (갈취). 짝이 안 맞는 만큼은 은행과 주고받음
+    for (const g of gained) {
+      const src = lost.find((l) => l.n > 0);
+      if (src) {
+        const n = Math.min(src.n, g.n);
+        push(pileOf(src.id), pileOf(g.id), n);
+        src.n -= n;
+        g.n -= n;
+      }
+      if (g.n > 0) push(bankWorld, pileOf(g.id), g.n);
+    }
+    for (const l of lost) if (l.n > 0) push(pileOf(l.id), bankWorld, l.n);
+    if (newFlights.length) setFlights((f) => [...f, ...newFlights]);
+  }, [game]);
+  const removeFlight = (id) => setFlights((f) => f.filter((x) => x.id !== id));
 
   const sendLook = (look) => socket.emit("look", look);
   const sendHand = (h) => socket.emit("hand", h);
   const sendGesture = (g) => socket.emit("gesture", g);
 
+  const totalCoins = seatPlayers.reduce((s, p) => s + (p.coins ?? 0), 0);
+  const bankCount = Math.max(0, COINS.bankTotal - totalCoins);
+  const turnId = game && game.phase !== "game_over" ? game.turnPlayerId : null;
+
   return (
     <Canvas shadows camera={{ fov: 60, near: 0.05, far: 50 }} style={{ background: ROOM.floorColor }}>
       <PointerInstaller />
       <FirstPersonLook eye={eyePosition(mySeat)} baseYaw={mySeat.yaw} onLook={sendLook} />
-      <MyHands holdCount={myHeld.length} onPutDown={putDownAll} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
+      <MyHands holdCount={myHeld.length} coinHeld={coinHeld} onPutDown={putDownAll} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
 
       <ambientLight intensity={ROOM.ambient} />
       <pointLight
@@ -109,9 +199,12 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
 
       <Room />
       <Table />
-      <Deck />
+      <Deck3D cards={game ? Math.max(1, game.deckCount) : 11} />
+      {/* 은행 동전 더미 (덱 옆) */}
+      <CoinPile position={bankWorld} count={bankCount} />
+      <CoinFlights flights={flights} onDone={removeFlight} />
 
-      {players.map((p, i) => (
+      {seatPlayers.map((p, i) => (
         <group key={p.id}>
           {i !== myIndex && (
             <Avatar
@@ -120,23 +213,24 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
               lookRef={getLookRef(p.id)}
               handRef={getHandRef(p.id)}
               nickname={p.nickname}
-              connected={p.connected}
-              highlight={highlightId === p.id}
+              connected={p.connected !== false}
+              highlight={highlightId === p.id || turnId === p.id}
               bubble={bubbles[p.id]}
             />
           )}
           <SeatProps
             seat={seats[i]}
-            coins={2}
+            coins={i === myIndex ? myCoins : (p.coins ?? 2)}
+            cards={p.cards ?? null}
             mine={i === myIndex}
-            hand={i === myIndex ? sampleHand(p.id) : null}
+            sampleHand={game ? null : sampleHand(p.id)}
             held={myHeld}
             onPick={pickCard}
+            onPickCoin={openCoinPrompt}
           />
         </group>
       ))}
 
-      {/* 빛 번짐 후처리: 전구처럼 밝은 부분만 네온처럼 번진다 */}
       {STRING_LIGHTS.enabled && STRING_LIGHTS.bloom && (
         <EffectComposer disableNormalPass>
           <Bloom
@@ -152,6 +246,20 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
   );
 }
 
+/** 자리의 동전 더미 위치 (카드 오른쪽) — 자리 그룹 로컬 좌표. SeatProps와 coinPileWorld가 같은 값을 쓴다. */
+const PILE_LOCAL = [PROPS.cardWidth + 0.12, 0, 0.02];
+
+/** 자리의 동전 더미 세계 좌표 */
+function coinPileWorld(seat) {
+  const spot = tableSpotFor(seat, PROPS.cardDistanceFromEdge);
+  const yaw = seat.yaw;
+  const [lx, , lz] = PILE_LOCAL;
+  // 자리 그룹의 Y축 회전(yaw)을 로컬 오프셋에 적용
+  const x = spot[0] + lx * Math.cos(yaw) + lz * Math.sin(yaw);
+  const z = spot[2] - lx * Math.sin(yaw) + lz * Math.cos(yaw);
+  return [x, TABLE_TOP, z];
+}
+
 function Room() {
   const s = ROOM.size;
   return (
@@ -160,12 +268,11 @@ function Room() {
         <planeGeometry args={[s, s]} />
         <meshStandardMaterial color={ROOM.floorColor} />
       </mesh>
-      {/* 천장: 벽과 같이 조명 영향 없는 재질. 색 값이 그대로 보인다 */}
+      {/* 천장과 벽: 조명 영향 없는 재질. 색 값이 그대로 보인다 */}
       <mesh position={[0, ROOM.ceilingHeight, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[s, s]} />
         <meshBasicMaterial color={ROOM.ceilingColor} />
       </mesh>
-      {/* 벽 4개: 조명 영향 없는 재질. 색 값이 그대로 보인다 */}
       {[
         [0, s / 4, -s / 2, 0],
         [0, s / 4, s / 2, Math.PI],
@@ -185,18 +292,15 @@ function Table() {
   const topY = TABLE.height - TABLE.thickness / 2;
   return (
     <group>
-      {/* 상판 (펠트) */}
       {/* 상판은 그림자를 받기만 한다 (자기 그림자를 만들면 줄무늬 아티팩트가 생김) */}
       <mesh position={[0, topY, 0]} scale={[TABLE.radiusX, 1, TABLE.radiusZ]} receiveShadow>
         <cylinderGeometry args={[1, 1, TABLE.thickness, 64]} />
         <meshStandardMaterial color={TABLE.color} roughness={0.95} />
       </mesh>
-      {/* 테두리 */}
       <mesh position={[0, topY - 0.025, 0]} scale={[TABLE.radiusX + 0.06, 1, TABLE.radiusZ + 0.06]}>
         <cylinderGeometry args={[1, 1, TABLE.thickness + 0.02, 64]} />
         <meshStandardMaterial color={TABLE.rimColor} roughness={0.6} />
       </mesh>
-      {/* 기둥 다리 */}
       <mesh position={[0, TABLE.height / 2, 0]} castShadow>
         <cylinderGeometry args={[0.18, 0.3, TABLE.height - TABLE.thickness, 24]} />
         <meshStandardMaterial color={TABLE.rimColor} />
@@ -205,11 +309,7 @@ function Table() {
   );
 }
 
-function Deck() {
-  return <Deck3D cards={11} />;
-}
-
-// 게임이 연결되기 전까지 내 자리에 보여줄 임시 손패. 플레이어 ID로 정해져서 새로고침해도 같다.
+// 게임이 연결되기 전(로비 미리보기)에 내 자리에 보여줄 임시 손패. 플레이어 ID로 정해져서 새로고침해도 같다.
 const SAMPLE_CHARACTERS = ["duke", "assassin", "captain", "ambassador", "contessa"];
 function sampleHand(id) {
   let h = 0;
@@ -219,7 +319,6 @@ function sampleHand(id) {
   return [SAMPLE_CHARACTERS[a], SAMPLE_CHARACTERS[b]];
 }
 
-/** 자리 앞에 놓인 카드 2장과 동전. 내 자리(mine)면 카드를 클릭해 집어 들 수 있다. */
 /** 캔버스에 입력 리스너(조준/잠금 상태)를 붙인다. Canvas 안에서만 gl을 얻을 수 있어서 별도 컴포넌트. */
 function PointerInstaller() {
   const { gl } = useThree();
@@ -227,22 +326,31 @@ function PointerInstaller() {
   return null;
 }
 
-function SeatProps({ seat, coins, mine = false, hand = null, held = [], onPick }) {
+/**
+ * 자리 앞의 카드 2장과 동전 더미.
+ *  cards: 게임 뷰의 카드 [{character|null, revealed}] (게임 중). null이면 sampleHand로 임시 카드.
+ *  mine:  내 자리면 카드/동전을 조준해 집을 수 있다. 공개된(revealed) 카드는 못 집는다.
+ */
+function SeatProps({ seat, coins, cards, mine = false, sampleHand = null, held = [], onPick, onPickCoin }) {
   const spot = tableSpotFor(seat, PROPS.cardDistanceFromEdge);
   const yaw = seat.yaw;
   return (
     <group position={spot} rotation={[0, yaw, 0]}>
       {[-1, 1].map((s, idx) => {
         const pos = [s * (PROPS.cardWidth / 2 + PROPS.cardGap / 2), PROPS.cardThickness / 2, 0];
+        const card = cards ? cards[idx] : { character: sampleHand?.[idx] ?? null, revealed: false };
+        if (!card) return null;
+        if (card.revealed) {
+          // 공개된(잃은) 카드: 앞면이 위로, 살짝 비스듬히 밀려남
+          return <Card3D key={s} position={[pos[0], pos[1], pos[2] + 0.06]} rotation={[0, s * 0.25, 0]} character={card.character} faceUp />;
+        }
         return mine ? (
-          <HandCard key={s} restPosition={pos} character={hand?.[idx] ?? null} index={idx} held={held} onPick={onPick} />
+          <HandCard key={s} restPosition={pos} character={card.character} index={idx} held={held} onPick={onPick} />
         ) : (
           <Card3D key={s} position={pos} />
         );
       })}
-      {Array.from({ length: coins }).map((_, i) => (
-        <Coin3D key={i} position={[PROPS.cardWidth + 0.08, PROPS.coinThickness * (i + 0.5), 0.02]} rotation={[0, i * 0.7, 0]} />
-      ))}
+      <CoinPile position={PILE_LOCAL} count={coins} interactive={mine} onPick={onPickCoin} />
     </group>
   );
 }

@@ -5,7 +5,7 @@ import ChatPanel from "../components/ChatPanel.jsx";
 
 // 역할 이름/색과 카드·동전 그림은 art/cards.jsx 에 모아두었다.
 
-export default function Game({ room, game, chat = [], onLeave }) {
+export default function Game({ room, game, chat = [], onLeave, onTable }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -49,6 +49,11 @@ export default function Game({ room, game, chat = [], onLeave }) {
           <span className="muted"> · 방 {room.code} · 덱 {game.deckCount}장</span>
         </div>
         <div className="row">
+          {onTable && (
+            <button className="small" onClick={onTable}>
+              🪑 3D 테이블
+            </button>
+          )}
           {isHost && (
             <button className={`small ${game.phase === "game_over" ? "primary" : ""}`} onClick={backToLobby}>
               {game.phase === "game_over" ? "로비로" : "게임 종료"}
@@ -93,7 +98,7 @@ export default function Game({ room, game, chat = [], onLeave }) {
 
 // ───────────────────────── 상태 표시줄 ─────────────────────────
 
-function StatusBar({ game, nameOf }) {
+export function StatusBar({ game, nameOf }) {
   const p = game.pending;
   let text;
   switch (game.phase) {
@@ -167,7 +172,7 @@ function Card({ card, onClick, selected, small }) {
 
 // ───────────────────────── 행동 패널 ─────────────────────────
 
-function ActionPanel({ game, me, nameOf, send, busy }) {
+export function ActionPanel({ game, me, nameOf, send, busy }) {
   const opt = game.options;
   const [picked, setPicked] = useState(null); // 대상이 필요한 행동을 고른 상태
   const [keep, setKeep] = useState([]);

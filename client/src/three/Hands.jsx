@@ -3,7 +3,8 @@ import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { HAND, TABLE } from "./config.js";
 import { pointer, crosshair, interactables, aimNdc } from "./input.js";
-import { Card3D } from "./Props3D.jsx";
+import { Card3D, Coin3D } from "./Props3D.jsx";
+const _coinOff = new THREE.Vector3(0, 0.03, 0); // 손 위 동전 위치
 
 const UP = new THREE.Vector3(0, 1, 0);
 
@@ -59,7 +60,7 @@ function Bone({ a, b, radius, color }) {
  *  bendHint: 팔꿈치가 꺾이는 방향 힌트 (보통 아래+바깥)
  *  holdingCard: 손에 카드(뒷면이 바깥을 향함)를 쥔 모습
  */
-export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard = false, cardCount = 1, instant = false, showShoulder = true }) {
+export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard = false, cardCount = 1, coinCount = 0, instant = false, showShoulder = true }) {
   const elbow = useMemo(() => new THREE.Vector3(), []);
   const hand = useMemo(() => new THREE.Vector3().copy(target), []);
   const hint = useMemo(() => new THREE.Vector3(...bendHint), [bendHint]);
@@ -67,6 +68,7 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
   const handRef = useRef();
   const shoulderRef = useRef();
   const cardRef = useRef();
+  const coinRef = useRef();
 
   useFrame((_, dt) => {
     const k = instant ? 1 : 1 - Math.exp(-HAND.smoothing * dt);
@@ -91,6 +93,7 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
 
     if (handRef.current) handRef.current.position.copy(hand);
     if (shoulderRef.current) shoulderRef.current.position.copy(shoulder);
+    if (coinRef.current) coinRef.current.position.copy(hand).add(_coinOff);
     if (cardRef.current) {
       // 카드는 손 바로 앞에 세워서, 뒷면이 손이 뻗은 방향(바깥)을 보게
       cardRef.current.position.copy(hand).addScaledVector(tmp.dir, HAND.handBelowCard * 0.9);
@@ -110,6 +113,13 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
         <sphereGeometry args={[HAND.handRadius, 14, 10]} />
         <meshStandardMaterial color={handColor} />
       </mesh>
+      {coinCount > 0 && (
+        <group ref={coinRef}>
+          {Array.from({ length: Math.min(coinCount, 12) }).map((_, i) => (
+            <Coin3D key={i} position={[0, i * 0.0065, 0]} rotation={[0, i * 0.5, 0]} />
+          ))}
+        </group>
+      )}
       {holdingCard && (
         <group ref={cardRef}>
           {Array.from({ length: Math.max(1, cardCount) }).map((_, i) => {
@@ -133,7 +143,7 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
  *  - 왼손: 카드를 들었으면(holdIndex) 카드 위치로
  *  - 손 위치와 동작을 서버로 보낸다
  */
-export function MyHands({ holdCount = 0, onPutDown, onSendHand, onSendGesture, avatar }) {
+export function MyHands({ holdCount = 0, coinHeld = 0, onPutDown, onSendHand, onSendGesture, avatar }) {
   const holdIndex = holdCount > 0 ? holdCount : null; // 서버에는 든 장수를 보낸다 (없으면 null)
   const { camera, gl } = useThree();
   const rightShoulder = useMemo(() => new THREE.Vector3(), []);
@@ -164,8 +174,8 @@ export function MyHands({ holdCount = 0, onPutDown, onSendHand, onSendGesture, a
         crosshair.object.userData.onInteract();
         return;
       }
-      // 2) 카드를 들고 있으면 어디를 클릭하든 전부 내려놓는다 (든 카드는 조준점 밖에 있어서 다시 맞추기 어렵다)
-      if (holdIndex != null) {
+      // 2) 카드나 동전을 들고 있으면 어디를 클릭하든 전부 내려놓는다 (든 카드는 조준점 밖에 있어서 다시 맞추기 어렵다)
+      if (holdIndex != null || coinHeld > 0) {
         onPutDown?.();
         return;
       }
@@ -179,7 +189,7 @@ export function MyHands({ holdCount = 0, onPutDown, onSendHand, onSendGesture, a
     };
     el.addEventListener("click", onClick);
     return () => el.removeEventListener("click", onClick);
-  }, [gl, holdIndex, onPutDown]);
+  }, [gl, holdIndex, coinHeld, onPutDown]);
 
   useFrame(() => {
     // 어깨: 카메라 기준 고정 오프셋 → 세계 좌표
@@ -226,13 +236,14 @@ export function MyHands({ holdCount = 0, onPutDown, onSendHand, onSendGesture, a
     const now = performance.now();
     const l = lastSent.current;
     const moved = !Number.isFinite(l.x) || Math.abs(l.x - rightTarget.x) + Math.abs(l.y - rightTarget.y) + Math.abs(l.z - rightTarget.z) > 0.004;
-    if (((moved || l.hold !== holdIndex) && now - l.t >= HAND.sendInterval) || now - l.t >= HAND.keepalive) {
+    if (((moved || l.hold !== holdIndex || l.coin !== coinHeld) && now - l.t >= HAND.sendInterval) || now - l.t >= HAND.keepalive) {
       l.t = now;
       l.x = rightTarget.x;
       l.y = rightTarget.y;
       l.z = rightTarget.z;
       l.hold = holdIndex;
-      onSendHand?.({ x: rightTarget.x, y: rightTarget.y, z: rightTarget.z, hold: holdIndex ?? null });
+      l.coin = coinHeld;
+      onSendHand?.({ x: rightTarget.x, y: rightTarget.y, z: rightTarget.z, hold: holdIndex ?? null, coin: coinHeld });
     }
   });
 
@@ -240,7 +251,7 @@ export function MyHands({ holdCount = 0, onPutDown, onSendHand, onSendGesture, a
   const sleeve = avatar?.body ?? "#5b8def";
   return (
     <group>
-      <Arm shoulder={rightShoulder} target={rightTarget} bendHint={[0.4, -1, 0]} color={sleeve} handColor={skin} showShoulder={false} />
+      <Arm shoulder={rightShoulder} target={rightTarget} bendHint={[0.4, -1, 0]} color={sleeve} handColor={skin} showShoulder={false} coinCount={coinHeld} />
       {holdIndex != null && <Arm shoulder={leftShoulder} target={leftTarget} bendHint={[-0.4, -1, 0]} color={sleeve} handColor={skin} showShoulder={false} />}
     </group>
   );

@@ -24,6 +24,7 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
   const leftTarget = useMemo(() => new THREE.Vector3(-0.28, SEAT_HEIGHT + 0.3, -0.35), []);
   const [holding, setHolding] = useState(false);
   const [holdCount, setHoldCount] = useState(1);
+  const [coin, setCoin] = useState(0);
   const tmpV = useMemo(() => new THREE.Vector3(), []);
 
   useFrame(() => {
@@ -49,6 +50,8 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
     const isHolding = h?.hold != null;
     if (isHolding !== holding) setHolding(isHolding);
     if (isHolding && h.hold !== holdCount) setHoldCount(h.hold);
+    const coins = Number(h?.coin) || 0;
+    if (coins !== coin) setCoin(coins);
     if (isHolding) leftTarget.set(-0.22, SEAT_HEIGHT + AVATAR.bodyHeight + 0.05, -0.3);
     else leftTarget.set(-0.28, SEAT_HEIGHT + 0.3, -0.35);
   });
@@ -81,7 +84,7 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
   return (
     <group ref={groupRef} position={seat.position} rotation={[0, seat.yaw, 0]}>
       {/* 팔 */}
-      <Arm shoulder={rightShoulder} target={rightTarget} bendHint={[0.5, -1, 0]} color={avatar.body} handColor={avatar.head} />
+      <Arm shoulder={rightShoulder} target={rightTarget} bendHint={[0.5, -1, 0]} color={avatar.body} handColor={avatar.head} coinCount={coin} />
       <Arm shoulder={leftShoulder} target={leftTarget} bendHint={[-0.5, -1, 0]} color={avatar.body} handColor={avatar.head} holdingCard={holding} cardCount={holdCount} />
       {/* 의자 */}
       <mesh position={[0, SEAT_HEIGHT / 2, 0.05]} castShadow receiveShadow>

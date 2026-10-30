@@ -414,3 +414,24 @@ button.danger { border-color: var(--error); color: var(--error); }
 .table-view:fullscreen { background: var(--bg); }
 .table-overlay.top .row { pointer-events: auto; gap: 6px; }
 .build-tag { font-size: 11px; opacity: 0.6; align-self: center; margin-right: 6px; }
+
+/* 3D 게임 오버레이 (상태줄 + 행동 패널) */
+.table-overlay.bottom-center { bottom: 0; top: auto; justify-content: center; align-items: flex-end; }
+.game-overlay {
+  pointer-events: auto;
+  width: min(640px, calc(100vw - 400px));
+  display: flex; flex-direction: column; gap: 8px;
+  opacity: 0.96;
+}
+.game-overlay .status { padding: 8px 12px; font-size: 14px; }
+.game-overlay .panel { padding: 10px; gap: 8px; }
+.game-overlay .btn-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; }
+.game-overlay .action-btn { padding: 7px 10px; }
+.game-overlay .action-name { font-size: 14px; }
+.game-overlay .group-label { margin: 0 0 -4px; }
+.table-overlay.center { top: 0; bottom: 0; justify-content: center; align-items: center; }
+.coin-prompt {
+  background: rgba(20, 20, 28, 0.85); border: 1px solid var(--accent);
+  border-radius: 12px; padding: 12px 18px; display: flex; flex-direction: column; gap: 4px; align-items: center;
+  font-size: 15px; animation: pop .15s ease-out;
+}

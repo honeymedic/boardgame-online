@@ -1,12 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import TableScene from "../three/TableScene.jsx";
 import ChatPanel from "../components/ChatPanel.jsx";
+import { StatusBar, ActionPanel } from "./Game.jsx";
+import { playerId, request } from "../socket.js";
 
-/** 3D 테이블 화면 (시제품). 게임 연결은 아직 없고 자리/아바타/시선/손/말풍선을 보여준다. */
-export default function Table({ room, chat, bubbles, onBack }) {
+/**
+ * 3D 테이블 화면. 로비에서는 미리보기, 게임 중에는 실제 게임 화면.
+ * 게임 중이면 아래쪽에 2D 상태줄 + 행동 패널을 얹는다.
+ */
+export default function Table({ room, game = null, chat, bubbles, onBack }) {
   const [locked, setLocked] = useState(false);
   const [touch, setTouch] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [coinPrompt, setCoinPrompt] = useState(null); // { max } 동전 개수 선택 중
   const viewRef = useRef(null);
 
   useEffect(() => {
@@ -28,7 +34,7 @@ export default function Table({ room, chat, bubbles, onBack }) {
   useEffect(() => {
     const onKey = (e) => {
       const tag = document.activeElement?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA") return; // 이미 입력 중이면 무시
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "t" || e.key === "T" || e.key === "ㅅ") {
         e.preventDefault();
         if (document.pointerLockElement) document.exitPointerLock();
@@ -46,30 +52,93 @@ export default function Table({ room, chat, bubbles, onBack }) {
     else viewRef.current?.requestFullscreen?.().catch?.(() => {});
   };
 
+  const hint = touch
+    ? " · 드래그로 고개 돌리기, 탭으로 집기"
+    : locked
+      ? " · 클릭: 집기/휘두르기 · T: 채팅 · F: 전체화면 · Esc: 마우스 풀기"
+      : " · 화면을 클릭하면 시작 · T: 채팅 · F: 전체화면";
+
   return (
     <div className="table-view" ref={viewRef}>
-      <TableScene players={room.players} bubbles={bubbles} />
+      <TableScene players={room.players} game={game} bubbles={bubbles} onCoinPrompt={setCoinPrompt} />
 
-      {/* 조준점 */}
       {!touch && <div className={`crosshair ${locked ? "" : "idle"}`} />}
+
+      {coinPrompt && (
+        <div className="table-overlay center">
+          <div className="coin-prompt">
+            <strong>동전 몇 개를 집을까요?</strong>
+            <span className="muted">숫자 키 1~{Math.min(9, coinPrompt.max)} · 0: 전부({coinPrompt.max}) · Esc: 취소</span>
+          </div>
+        </div>
+      )}
 
       <div className="table-overlay top">
         <span className="muted">
-          방 {room.code} · {room.players.length}명
-          {touch ? " · 드래그로 고개 돌리기, 탭으로 집기" : locked ? " · 클릭: 집기/휘두르기 · T: 채팅 · F: 전체화면 · Esc: 마우스 풀기" : " · 화면을 클릭하면 시작 · T: 채팅 · F: 전체화면"}
+          방 {room.code} · {room.players.length}명{hint}
         </span>
         <div className="row">
-          <span className="muted build-tag" title="빌드 시각">{typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : ""}</span>
+          <span className="muted build-tag" title="빌드 시각">
+            {typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : ""}
+          </span>
           <button className="small" onClick={toggleFullscreen}>
             {fullscreen ? "전체화면 해제" : "전체화면"}
           </button>
           <button className="small" onClick={onBack}>
-            로비로
+            {game ? "2D 화면" : "로비로"}
           </button>
         </div>
       </div>
+
+      {game && <GameOverlay game={game} />}
+
       <div className="table-overlay bottom-right">
         <ChatPanel messages={chat} compact />
+      </div>
+    </div>
+  );
+}
+
+/** 게임 중 3D 위에 얹는 상태줄 + 행동 패널. 버튼을 누르려면 Esc로 마우스를 풀어야 한다. */
+function GameOverlay({ game }) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const me = game.players.find((p) => p.id === playerId);
+  const nameOf = (id) => game.players.find((p) => p.id === id)?.nickname ?? "?";
+
+  const send = async (msg) => {
+    setError("");
+    setBusy(true);
+    try {
+      await request("game:action", msg);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // 카드 잃기는 3D에서 카드를 직접 클릭하는 대신 패널 버튼으로 (간단하게)
+  const loseButtons =
+    game.options?.kind === "lose" ? (
+      <div className="panel">
+        <p className="panel-title">잃을 카드를 고르세요</p>
+        <div className="btn-row">
+          {game.options.cardIndices.map((i) => (
+            <button key={i} className="danger" disabled={busy} onClick={() => send({ type: "lose", cardIndex: i })}>
+              {i === 0 ? "왼쪽 카드" : "오른쪽 카드"}
+            </button>
+          ))}
+        </div>
+      </div>
+    ) : null;
+
+  return (
+    <div className="table-overlay bottom-center">
+      <div className="game-overlay">
+        <StatusBar game={game} nameOf={nameOf} />
+        {loseButtons ?? <ActionPanel game={game} me={me} nameOf={nameOf} send={send} busy={busy} />}
+        {error && <p className="error">{error}</p>}
       </div>
     </div>
   );

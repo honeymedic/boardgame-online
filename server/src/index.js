@@ -137,7 +137,8 @@ io.on("connection", (socket) => {
     const x = Number(d?.x), y = Number(d?.y), z = Number(d?.z);
     if (![x, y, z].every(Number.isFinite)) return;
     const hold = Number.isInteger(d?.hold) ? d.hold : null;
-    socket.to(socket.data.code).emit("hand", { playerId, x, y, z, hold });
+    const coin = Number.isInteger(d?.coin) ? Math.max(0, Math.min(50, d.coin)) : d?.coin === true ? 1 : 0; // 오른손에 쥔 동전 개수
+    socket.to(socket.data.code).emit("hand", { playerId, x, y, z, hold, coin });
   });
 
   // 손 동작 중계: { type, target: [x,y,z] } — 예: 좌클릭 휘두르기

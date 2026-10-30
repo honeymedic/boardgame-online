@@ -135,3 +135,15 @@ export const HAND = {
   swingDrop: 0.22, // 내지를 때 아래로 내리치는 정도
   swingWindupLift: 0.24, // 예비 동작에서 손을 들어 올리는 높이
 };
+
+// 동전: 은행 더미, 자리 더미, 이동 애니메이션
+export const COINS = {
+  bankPosition: [0.42, 0, 0.12], // 은행 더미 위치 (테이블 중앙 기준 x, z). 덱 옆
+  bankTotal: 50, // 쿠 기본 은행 동전 수
+  stackMax: 8, // 한 기둥에 쌓는 최대 개수 (넘치면 옆 기둥)
+  stackGap: 0.085, // 기둥 사이 간격
+  flightDuration: 0.7, // 동전이 날아가는 시간 (초)
+  flightArc: 0.28, // 포물선 높이
+  flightStagger: 0.09, // 여러 개 날아갈 때 간격 (초)
+  handCoinOffset: [0, 0.03, 0], // 손에 쥔 동전의 손 기준 위치
+};

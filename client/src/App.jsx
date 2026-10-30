@@ -94,13 +94,13 @@ export default function App() {
 
   let screen;
   if (!room) screen = <Home onEnter={enterRoom} notice={notice} />;
-  else if (room.status === "lobby" && preview)
-    screen = <Table room={room} chat={chat} bubbles={bubbles} onBack={() => setPreview(false)} />;
+  else if (preview)
+    screen = <Table room={room} game={room.status === "playing" ? game : null} chat={chat} bubbles={bubbles} onBack={() => setPreview(false)} />;
   else if (room.status === "lobby")
     screen = <Lobby room={room} chat={chat} onLeave={leaveRoom} onPreview={() => setPreview(true)} />;
-  else screen = <Game room={room} game={game} chat={chat} onLeave={leaveRoom} />;
+  else screen = <Game room={room} game={game} chat={chat} onLeave={leaveRoom} onTable={() => setPreview(true)} />;
 
-  const fullscreen = room?.status === "lobby" && preview;
+  const fullscreen = !!room && preview;
   return (
     <div className={`app ${fullscreen ? "fullscreen" : ""}`}>
       {!connected && <div className="banner">서버에 연결 중...</div>}
