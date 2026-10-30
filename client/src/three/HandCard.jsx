@@ -86,8 +86,10 @@ export default function HandCard({ restPosition, character, index, held = [], on
     }
   });
 
+  // 들었을 때는 양면 모두 앞그림: 내 화면의 이 카드는 나만 보고, 상대는 자기 화면에서 뒷면을 따로 그린다.
+  // 그래서 어떤 각도로 뒤집히든 뒷면이 보이는 일이 없다.
   const top = picked ? front : back;
-  const bottom = picked ? back : front;
+  const bottom = picked ? front : front;
   const edge = hovered ? PICKUP.hoverEdgeColor : PROPS.cardEdgeColor;
 
   return (
