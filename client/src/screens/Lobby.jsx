@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { playerId, request } from "../socket.js";
+import ChatPanel from "../components/ChatPanel.jsx";
 
-export default function Lobby({ room, onLeave, onPreview }) {
+export default function Lobby({ room, chat, onLeave, onPreview }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const isHost = room.hostId === playerId;
@@ -76,6 +77,8 @@ export default function Lobby({ room, onLeave, onPreview }) {
       {error && <p className="error">{error}</p>}
 
       <button onClick={onPreview}>🪑 테이블에 앉아보기 (3D 미리보기)</button>
+
+      <ChatPanel messages={chat} />
 
       <button className="link" onClick={onLeave}>
         방 나가기

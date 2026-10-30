@@ -3,7 +3,7 @@ import { createServer } from "node:http";
 import { Server } from "socket.io";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { RoomManager } from "./rooms.js";
+import { RoomManager, EMOTES } from "./rooms.js";
 import { handle as handleCoup, viewFor as coupViewFor } from "./games/coup/game.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -73,6 +73,7 @@ io.on("connection", (socket) => {
       broadcastRoom(room);
       // 진행 중인 게임에 재접속한 경우 게임 화면도 바로 보내준다
       if (room.game) socket.emit("game:update", coupViewFor(room.game, playerId));
+      socket.emit("chat:history", room.chat);
       console.log(`[입장] ${room.code} ← ${nickname}`);
     } catch (e) {
       cb?.({ ok: false, error: e.message });
@@ -111,6 +112,23 @@ io.on("connection", (socket) => {
     } catch (e) {
       cb?.({ ok: false, error: e.message });
     }
+  });
+
+  // 채팅: 서버가 다듬어서 저장한 뒤 방 전체에 보낸다
+  socket.on("chat:send", ({ text }, cb) => {
+    try {
+      const msg = rooms.addChat(socket.data.code, playerId, text);
+      io.to(socket.data.code).emit("chat:message", msg);
+      cb?.({ ok: true });
+    } catch (e) {
+      cb?.({ ok: false, error: e.message });
+    }
+  });
+
+  // 빠른 반응 이모지: 저장하지 않고 중계만. 허용 목록에 있는 것만.
+  socket.on("emote", ({ emoji }) => {
+    if (!socket.data.code || !EMOTES.includes(emoji)) return;
+    io.to(socket.data.code).emit("emote", { playerId, emoji, ts: Date.now() });
   });
 
   // 시선(고개 방향) 중계. 게임 상태와 무관하고 저장하지 않는다. 같은 방 다른 사람에게만 그대로 전달.

@@ -14,7 +14,7 @@ import { socket, playerId } from "../socket.js";
  * players: room.players (id, nickname, avatar, connected)
  * 내 자리는 players에서 내 index. 카메라는 그 자리에 앉아 있고, 내 아바타는 그리지 않는다.
  */
-export default function TableScene({ players, highlightId = null }) {
+export default function TableScene({ players, bubbles = {}, highlightId = null }) {
   const seats = useMemo(() => computeSeats(players.length), [players.length]);
   const myIndex = Math.max(0, players.findIndex((p) => p.id === playerId));
   const mySeat = seats[myIndex];
@@ -77,6 +77,7 @@ export default function TableScene({ players, highlightId = null }) {
               nickname={p.nickname}
               connected={p.connected}
               highlight={highlightId === p.id}
+              bubble={bubbles[p.id]}
             />
           )}
           <SeatProps seat={seats[i]} coins={2} />

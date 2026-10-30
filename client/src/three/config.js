@@ -36,6 +36,9 @@ export const AVATAR = {
   eyeWhiteColor: "#d9d9d9", // 흰자 (너무 밝으면 블룸 때문에 눈이 빛나 보임)
   headTurnSmoothing: 8, // 클수록 상대 고개가 빨리 따라옴
   nameOffset: 0.3, // 머리 위 이름표 높이
+  labelScale: 3, // 이름표/말풍선 크기 (3D 거리 기준 배율). 6이면 지금의 두 배
+  bubbleDuration: 5000, // 채팅 말풍선이 머리 위에 떠 있는 시간 (ms)
+  emoteDuration: 3000, // 이모지가 떠 있는 시간 (ms)
 };
 
 export const PROPS = {

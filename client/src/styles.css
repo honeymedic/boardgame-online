@@ -226,29 +226,21 @@ button.small { padding: 6px 12px; font-size: 14px; }
 
 .hand { display: flex; gap: 8px; flex-wrap: wrap; }
 .cardface {
-  --c: #6b7280;
-  width: 72px;
-  height: 100px;
+  width: 90px;
+  height: 126px;
   border-radius: 10px;
-  border: 2px solid var(--c);
-  background: linear-gradient(160deg, var(--c), color-mix(in srgb, var(--c) 55%, black));
-  color: white;
-  font-weight: 700;
-  font-size: 14px;
+  border: 0;
   padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  text-shadow: 0 1px 2px rgba(0,0,0,.5);
+  background: none;
+  overflow: hidden;
+  display: block;
+  line-height: 0;
+  transition: transform .12s ease, box-shadow .12s ease;
 }
+.cardface svg { width: 100%; height: 100%; display: block; }
+.cardface.small { width: 60px; height: 84px; border-radius: 7px; }
 .cardface:disabled { opacity: 1; cursor: default; }
-.cardface.back {
-  background: repeating-linear-gradient(45deg, #3a3f52 0 6px, #2f3344 6px 12px);
-  border-color: #4a5068;
-  color: #9a9db0;
-  font-size: 22px;
-}
-.cardface.revealed { filter: grayscale(1); opacity: 0.5; text-decoration: line-through; }
+.cardface.revealed { filter: grayscale(1); opacity: 0.45; }
 .cardface.clickable { cursor: pointer; box-shadow: 0 0 0 3px var(--accent); }
 .cardface.clickable:hover { transform: translateY(-4px); }
 .cardface.selected { box-shadow: 0 0 0 4px var(--accent); transform: translateY(-6px); }
@@ -359,3 +351,57 @@ button.danger { border-color: var(--error); color: var(--error); }
   background: transparent;
 }
 .players li .kick:hover { border-color: var(--error); }
+
+/* ───────── 채팅 / 이모지 ───────── */
+.chat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+}
+.chat.compact { width: 300px; max-width: calc(100vw - 28px); pointer-events: auto; box-shadow: 0 8px 24px rgba(0,0,0,.45); }
+.chat.compact.closed { width: auto; }
+.chat-head {
+  display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 8px 12px; font-size: 13px; font-weight: 600;
+  background: var(--bg);
+}
+.chat.compact .chat-head { cursor: pointer; }
+.chat-list {
+  height: 160px; overflow-y: auto; padding: 8px 12px;
+  display: flex; flex-direction: column; gap: 4px; font-size: 13px;
+}
+.chat-empty { font-size: 12px; }
+.chat-msg { display: flex; gap: 6px; line-height: 1.35; }
+.chat-name { color: var(--muted); flex-shrink: 0; }
+.chat-name::after { content: ":"; }
+.chat-msg.mine .chat-name { color: var(--accent); }
+.chat-text { word-break: break-word; }
+.emote-bar { display: flex; gap: 2px; padding: 4px 8px; border-top: 1px solid var(--border); flex-wrap: wrap; }
+.emote-btn { background: none; border: none; font-size: 18px; padding: 2px 5px; border-radius: 8px; line-height: 1; }
+.emote-btn:hover { background: var(--border); transform: scale(1.2); }
+.chat-form { display: flex; gap: 6px; padding: 6px 8px 8px; border-top: 1px solid var(--border); }
+.chat-form input { flex: 1; padding: 8px 10px; font-size: 14px; }
+.chat-form button { padding: 8px 12px; font-size: 13px; }
+
+.table-overlay.bottom-right { bottom: 0; top: auto; justify-content: flex-end; align-items: flex-end; }
+
+/* 3D 아바타 머리 위 말풍선 */
+.speech {
+  background: #fff; color: #1b1d24;
+  padding: 6px 12px; border-radius: 14px; font-size: 14px;
+  width: max-content; max-width: 240px; white-space: pre-wrap; word-break: break-word; text-align: center;
+  position: relative; box-shadow: 0 4px 12px rgba(0,0,0,.35);
+  animation: pop .18s ease-out;
+}
+.speech::after {
+  content: ""; position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%);
+  border: 7px solid transparent; border-top-color: #fff; border-bottom: 0;
+}
+.speech.emote { font-size: 30px; padding: 6px 10px; background: transparent; box-shadow: none; }
+.speech.emote::after { display: none; }
+@keyframes pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.speech-anchor { transform: translate(-50%, -100%); }

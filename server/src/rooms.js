@@ -7,6 +7,11 @@ import { createGame } from "./games/coup/game.js";
 const CODE_CHARS ="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O, 1/I 제외
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
+const MAX_CHAT_LENGTH = 200;
+const MAX_CHAT_HISTORY = 50;
+
+// 빠른 반응으로 보낼 수 있는 이모지. 클라이언트 버튼과 같은 목록이어야 한다.
+export const EMOTES = ["😂", "😮", "🤔", "😏", "😱", "👍", "👎", "❤️"];
 
 // 아바타 설정. 지금은 색 두 가지뿐이지만 나중에 모자, 눈 모양 등을 여기에 추가한다.
 const DEFAULT_AVATAR = { body: "#5b8def", head: "#f2d3b3" };
@@ -47,6 +52,7 @@ export class RoomManager {
       status: "lobby", // "lobby" | "playing"
       players: [],
       game: null,
+      chat: [], // 최근 채팅 (늦게 들어온 사람에게 보여주기 위해 보관)
       createdAt: Date.now(),
     };
     this.rooms.set(code, room);
@@ -121,6 +127,20 @@ export class RoomManager {
     room.status = "playing";
     room.game = createGame(room.players);
     return room;
+  }
+
+  /** 채팅 한 줄을 저장하고 돌려준다. 내용은 여기서 다듬는다 (길이 제한, 공백 제거). */
+  addChat(code, playerId, text) {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error("방을 찾을 수 없습니다.");
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) throw new Error("방에 없는 플레이어입니다.");
+    const clean = String(text ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_CHAT_LENGTH);
+    if (!clean) throw new Error("빈 메시지입니다.");
+    const msg = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, playerId, nickname: player.nickname, text: clean, ts: Date.now() };
+    room.chat.push(msg);
+    if (room.chat.length > MAX_CHAT_HISTORY) room.chat.shift();
+    return msg;
   }
 
   /** 방장이 참가자를 내보낸다. 로비에서만 가능. 내보내진 뒤의 방을 돌려준다. */

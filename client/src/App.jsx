@@ -10,6 +10,8 @@ export default function App() {
   const [game, setGame] = useState(null);
   const [preview, setPreview] = useState(false); // 로비에서 3D 테이블 미리보기 중인지
   const [notice, setNotice] = useState(""); // 홈 화면에 띄울 안내 (예: 내보내짐)
+  const [chat, setChat] = useState([]); // 방 채팅 (서버가 보낸 것)
+  const [bubbles, setBubbles] = useState({}); // playerId → { text, ts }  아바타 머리 위 말풍선용 (최근 발언/이모지)
   const [connected, setConnected] = useState(socket.connected);
 
   useEffect(() => {
@@ -35,6 +37,13 @@ export default function App() {
       if (r.status === "lobby") setGame(null);
     };
     const onGameUpdate = (g) => setGame(g);
+    const showBubble = (pid, text, ts) => setBubbles((b) => ({ ...b, [pid]: { text, ts } }));
+    const onChatHistory = (list) => setChat(list);
+    const onChatMessage = (m) => {
+      setChat((c) => [...c.slice(-99), m]);
+      showBubble(m.playerId, m.text, m.ts);
+    };
+    const onEmote = ({ playerId: pid, emoji, ts }) => showBubble(pid, emoji, ts);
     const onKicked = () => {
       sessionStorage.removeItem("roomCode");
       setRoom(null);
@@ -48,6 +57,9 @@ export default function App() {
     socket.on("room:update", onRoomUpdate);
     socket.on("game:update", onGameUpdate);
     socket.on("room:kicked", onKicked);
+    socket.on("chat:history", onChatHistory);
+    socket.on("chat:message", onChatMessage);
+    socket.on("emote", onEmote);
     if (socket.connected) onConnect();
 
     return () => {
@@ -56,6 +68,9 @@ export default function App() {
       socket.off("room:update", onRoomUpdate);
       socket.off("game:update", onGameUpdate);
       socket.off("room:kicked", onKicked);
+      socket.off("chat:history", onChatHistory);
+      socket.off("chat:message", onChatMessage);
+      socket.off("emote", onEmote);
     };
   }, []);
 
@@ -63,6 +78,8 @@ export default function App() {
     sessionStorage.setItem("roomCode", r.code);
     setRoom(r);
     setNotice("");
+    setChat([]);
+    setBubbles({});
   };
 
   const leaveRoom = async () => {
@@ -71,13 +88,17 @@ export default function App() {
     setRoom(null);
     setGame(null);
     setPreview(false);
+    setChat([]);
+    setBubbles({});
   };
 
   let screen;
   if (!room) screen = <Home onEnter={enterRoom} notice={notice} />;
-  else if (room.status === "lobby" && preview) screen = <Table room={room} onBack={() => setPreview(false)} />;
-  else if (room.status === "lobby") screen = <Lobby room={room} onLeave={leaveRoom} onPreview={() => setPreview(true)} />;
-  else screen = <Game room={room} game={game} onLeave={leaveRoom} />;
+  else if (room.status === "lobby" && preview)
+    screen = <Table room={room} chat={chat} bubbles={bubbles} onBack={() => setPreview(false)} />;
+  else if (room.status === "lobby")
+    screen = <Lobby room={room} chat={chat} onLeave={leaveRoom} onPreview={() => setPreview(true)} />;
+  else screen = <Game room={room} game={game} chat={chat} onLeave={leaveRoom} />;
 
   const fullscreen = room?.status === "lobby" && preview;
   return (

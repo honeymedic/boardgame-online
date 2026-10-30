@@ -58,6 +58,10 @@ client/            React + Vite 클라이언트 (화면만 담당)
 | 서버 → 클라 | `room:update` | 방 상태 전체 (방 안 모두에게) |
 | 서버 → 클라 | `game:update` | 게임 상태. 받는 사람이 봐도 되는 정보만 (개인별로 다름) |
 | 양방향 | `look` `{yaw, pitch}` | 시선 방향. 서버는 저장 없이 같은 방 다른 사람에게 중계 |
+| 클라 → 서버 | `chat:send` `{text}` | 채팅. 서버가 다듬어 저장(최근 50개) 후 `chat:message`로 방 전체에 |
+| 서버 → 클라 | `chat:history` | 입장 시 최근 채팅 목록 |
+| 양방향 | `emote` `{emoji}` | 빠른 반응 이모지. 허용 목록(rooms.js EMOTES)만 중계, 저장 안 함 |
+| 클라 → 서버 | `room:kick` `{targetId}` | 방장이 참가자 내보내기 (로비에서만). 대상에게 `room:kicked` |
 
 ## 배포 (Render)
 

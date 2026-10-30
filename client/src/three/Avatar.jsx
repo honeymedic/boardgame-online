@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import { AVATAR, SEAT } from "./config.js";
@@ -11,8 +11,18 @@ import { AVATAR, SEAT } from "./config.js";
  *  lookRef   { current: { yaw, pitch } }  이 사람의 실제 시선(절대 각도). 없으면 정면.
  *  nickname, connected, highlight
  */
-export default function Avatar({ seat, avatar, lookRef, nickname, connected = true, highlight = false }) {
+export default function Avatar({ seat, avatar, lookRef, nickname, connected = true, highlight = false, bubble = null }) {
   const headRef = useRef();
+
+  // 말풍선: 새 발언/이모지가 오면 잠시 보였다가 사라진다
+  const [showBubble, setShowBubble] = useState(false);
+  useEffect(() => {
+    if (!bubble) return;
+    setShowBubble(true);
+    const isEmoji = bubble.text.length <= 2;
+    const t = setTimeout(() => setShowBubble(false), isEmoji ? AVATAR.emoteDuration : AVATAR.bubbleDuration);
+    return () => clearTimeout(t);
+  }, [bubble?.ts]);
 
   useFrame((_, dt) => {
     if (!headRef.current) return;
@@ -68,8 +78,18 @@ export default function Avatar({ seat, avatar, lookRef, nickname, connected = tr
         ))}
       </group>
 
+      {/* 말풍선 (채팅 / 이모지) */}
+      {showBubble && bubble && (
+        <Html position={[0, headY + AVATAR.headRadius + AVATAR.nameOffset + 0.18, 0]} distanceFactor={AVATAR.labelScale} occlude={false}>
+          {/* 아래쪽 가운데를 기준점으로 잡아서 글이 길어지면 위로만 자란다 (이름표와 안 겹침) */}
+          <div className="speech-anchor">
+            <div className={`speech ${bubble.text.length <= 2 ? "emote" : ""}`}>{bubble.text}</div>
+          </div>
+        </Html>
+      )}
+
       {/* 이름표 */}
-      <Html position={[0, headY + AVATAR.headRadius + AVATAR.nameOffset, 0]} center distanceFactor={6} occlude={false}>
+      <Html position={[0, headY + AVATAR.headRadius + AVATAR.nameOffset, 0]} center distanceFactor={AVATAR.labelScale} occlude={false}>
         <div className={`nameplate ${highlight ? "highlight" : ""} ${connected ? "" : "offline"}`}>{nickname}</div>
       </Html>
     </group>

@@ -1,15 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { playerId, request } from "../socket.js";
+import { CHAR, CardFace, Coin } from "../art/cards.jsx";
+import ChatPanel from "../components/ChatPanel.jsx";
 
-const CHAR = {
-  duke: { name: "공작", color: "#8b5cf6" },
-  assassin: { name: "암살자", color: "#64748b" },
-  captain: { name: "사령관", color: "#3b82f6" },
-  ambassador: { name: "대사", color: "#22c55e" },
-  contessa: { name: "귀부인", color: "#ef4444" },
-};
+// 역할 이름/색과 카드·동전 그림은 art/cards.jsx 에 모아두었다.
 
-export default function Game({ room, game, onLeave }) {
+export default function Game({ room, game, chat = [], onLeave }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -89,6 +85,8 @@ export default function Game({ room, game, onLeave }) {
       {error && <p className="error">{error}</p>}
 
       <Log entries={game.log} />
+
+      <ChatPanel messages={chat} />
     </main>
   );
 }
@@ -144,7 +142,7 @@ function PlayerCard({ p, isMe, isTurn, waiting, winner, onPickCard }) {
           {!p.alive && <span className="tag">탈락</span>}
           {winner && <span className="tag win">승리</span>}
         </span>
-        <span className="coins">🪙 {p.coins}</span>
+        <span className="coins"><Coin size={18} title="코인" /> {p.coins}</span>
       </div>
       <div className="hand">
         {p.cards.map((c, i) => (
@@ -161,8 +159,8 @@ function Card({ card, onClick, selected, small }) {
     .filter(Boolean)
     .join(" ");
   return (
-    <button className={cls} style={info ? { "--c": info.color } : undefined} onClick={onClick || undefined} disabled={!onClick}>
-      {info ? info.name : "?"}
+    <button className={cls} onClick={onClick || undefined} disabled={!onClick} title={info ? info.name : "뒷면"}>
+      <CardFace character={card.character} />
     </button>
   );
 }
