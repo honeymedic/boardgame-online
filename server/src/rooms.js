@@ -123,6 +123,17 @@ export class RoomManager {
     return room;
   }
 
+  /** 방장이 참가자를 내보낸다. 로비에서만 가능. 내보내진 뒤의 방을 돌려준다. */
+  kick(code, hostId, targetId) {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error("방을 찾을 수 없습니다.");
+    if (room.hostId !== hostId) throw new Error("방장만 내보낼 수 있습니다.");
+    if (room.status !== "lobby") throw new Error("게임 중에는 내보낼 수 없습니다.");
+    if (targetId === hostId) throw new Error("자기 자신은 내보낼 수 없습니다.");
+    if (!room.players.some((p) => p.id === targetId)) throw new Error("그 플레이어는 방에 없습니다.");
+    return this.leave(code, targetId);
+  }
+
   /** 게임을 끝내고 로비로 돌아간다. 방장만 가능. */
   reset(code, playerId) {
     const room = this.rooms.get(code);

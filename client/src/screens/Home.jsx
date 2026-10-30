@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { request, getAvatar, saveAvatar, getNickname, saveNickname } from "../socket.js";
 
-export default function Home({ onEnter }) {
+export default function Home({ onEnter, notice }) {
   const [nickname, setNickname] = useState(getNickname);
   const [avatar, setAvatar] = useState(getAvatar);
   const [code, setCode] = useState("");
@@ -46,6 +46,7 @@ export default function Home({ onEnter }) {
     <main className="card">
       <h1>보드게임 온라인</h1>
       <p className="muted">친구와 방 코드를 공유해서 함께 플레이하세요.</p>
+      {notice && <p className="notice">{notice}</p>}
 
       <label>
         닉네임

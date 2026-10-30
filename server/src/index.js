@@ -48,14 +48,14 @@ io.on("connection", (socket) => {
     socket.disconnect(true);
     return;
   }
-  let currentCode = null;
+  socket.data.code = null; // 이 소켓이 들어가 있는 방 코드
 
   console.log(`[연결] ${playerId.slice(0, 8)}`);
 
   socket.on("room:create", ({ nickname, avatar }, cb) => {
     try {
       const room = rooms.create({ playerId, nickname, avatar });
-      currentCode = room.code;
+      socket.data.code = room.code;
       socket.join(room.code);
       cb?.({ ok: true, room: rooms.toPublic(room) });
       console.log(`[방 생성] ${room.code} by ${nickname}`);
@@ -67,7 +67,7 @@ io.on("connection", (socket) => {
   socket.on("room:join", ({ code, nickname, avatar }, cb) => {
     try {
       const room = rooms.join({ code, playerId, nickname, avatar });
-      currentCode = room.code;
+      socket.data.code = room.code;
       socket.join(room.code);
       cb?.({ ok: true, room: rooms.toPublic(room) });
       broadcastRoom(room);
@@ -80,17 +80,17 @@ io.on("connection", (socket) => {
   });
 
   socket.on("room:leave", (_data, cb) => {
-    if (!currentCode) return cb?.({ ok: true });
-    const room = rooms.leave(currentCode, playerId);
-    socket.leave(currentCode);
-    currentCode = null;
+    if (!socket.data.code) return cb?.({ ok: true });
+    const room = rooms.leave(socket.data.code, playerId);
+    socket.leave(socket.data.code);
+    socket.data.code = null;
     if (room) broadcastRoom(room);
     cb?.({ ok: true });
   });
 
   socket.on("room:start", (_data, cb) => {
     try {
-      const room = rooms.start(currentCode, playerId);
+      const room = rooms.start(socket.data.code, playerId);
       broadcastRoom(room);
       broadcastGame(room);
       cb?.({ ok: true });
@@ -103,7 +103,7 @@ io.on("connection", (socket) => {
   // 게임 중 행동: { type: "action"|"pass"|"challenge"|"block"|"lose"|"exchange", ... }
   socket.on("game:action", (msg, cb) => {
     try {
-      const room = rooms.rooms.get(currentCode);
+      const room = rooms.rooms.get(socket.data.code);
       if (!room?.game) throw new Error("진행 중인 게임이 없습니다.");
       handleCoup(room.game, playerId, msg);
       broadcastGame(room);
@@ -115,16 +115,38 @@ io.on("connection", (socket) => {
 
   // 시선(고개 방향) 중계. 게임 상태와 무관하고 저장하지 않는다. 같은 방 다른 사람에게만 그대로 전달.
   socket.on("look", (data) => {
-    if (!currentCode) return;
+    if (!socket.data.code) return;
     const yaw = Number(data?.yaw);
     const pitch = Number(data?.pitch);
     if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
-    socket.to(currentCode).emit("look", { playerId, yaw, pitch });
+    socket.to(socket.data.code).emit("look", { playerId, yaw, pitch });
+  });
+
+  // 방장이 참가자 내보내기 (로비에서만)
+  socket.on("room:kick", async ({ targetId }, cb) => {
+    try {
+      const code = socket.data.code;
+      const room = rooms.kick(code, playerId, targetId);
+      // 내보내진 사람의 소켓(여러 탭일 수 있음)에 알리고 방에서 빼낸다
+      const sockets = await io.in(code).fetchSockets();
+      for (const s of sockets) {
+        if (s.handshake.auth?.playerId === targetId) {
+          s.emit("room:kicked", { code });
+          s.leave(code);
+          s.data.code = null;
+        }
+      }
+      if (room) broadcastRoom(room);
+      cb?.({ ok: true });
+      console.log(`[내보내기] ${code}: ${targetId.slice(0, 8)}`);
+    } catch (e) {
+      cb?.({ ok: false, error: e.message });
+    }
   });
 
   socket.on("room:reset", (_data, cb) => {
     try {
-      const room = rooms.reset(currentCode, playerId);
+      const room = rooms.reset(socket.data.code, playerId);
       broadcastRoom(room);
       cb?.({ ok: true });
     } catch (e) {
@@ -134,8 +156,8 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log(`[끊김] ${playerId.slice(0, 8)}`);
-    if (!currentCode) return;
-    const room = rooms.markDisconnected(currentCode, playerId);
+    if (!socket.data.code) return;
+    const room = rooms.markDisconnected(socket.data.code, playerId);
     if (room) broadcastRoom(room);
   });
 });

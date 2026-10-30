@@ -16,6 +16,16 @@ export default function Lobby({ room, onLeave, onPreview }) {
     }
   };
 
+  const kick = async (p) => {
+    if (!window.confirm(`${p.nickname} 님을 내보낼까요?`)) return;
+    setError("");
+    try {
+      await request("room:kick", { targetId: p.id });
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(room.code);
@@ -46,6 +56,11 @@ export default function Lobby({ room, onLeave, onPreview }) {
             {p.id === room.hostId && <span className="tag">방장</span>}
             {p.id === playerId && <span className="tag me">나</span>}
             {!p.connected && <span className="tag">연결 끊김</span>}
+            {isHost && p.id !== playerId && (
+              <button className="kick" onClick={() => kick(p)} title="내보내기">
+                내보내기
+              </button>
+            )}
           </li>
         ))}
       </ul>

@@ -57,7 +57,7 @@ export const ROOM = {
   size: 10,
   ceilingColor: "#0c0c0f", // 천장 색 (조명 영향 없이 이 색 그대로)
   ceilingHeight: 3.2,
-  lampColor: "#fff1d6", // 테이블을 비추는 보이지 않는 조명의 색
+  lampColor: "#ffd24a", // 테이블을 비추는 보이지 않는 조명의 색
   lampIntensity: 18,
   ambient: 0.35,
 };
@@ -70,9 +70,9 @@ export const STRING_LIGHTS = {
   sag: 0.35, // 가운데가 처지는 정도
   spread: 2.6, // 줄이 걸쳐지는 반경 (테이블보다 조금 넓게)
   bulbsPerStrand: 14,
-  bulbRadius: 0.016, // 전구 크기
+  bulbRadius: 0.008, // 전구 크기
   wireColor: "#2a2420",
-  colors: ["#ff2bd6", "#00f0ff", "#39ff14", "#ffe600", "#ff3131", "#8a2bff"], // 전구 색 (네온: 분홍, 시안, 라임, 노랑, 빨강, 보라)
+  colors: ["#ffe600", "#ffd000", "#ffbf1a"], // 전구 색 (노랑 계열 3톤)
   warmOnly: false, // true면 전부 따뜻한 주황 전구로
   glow: 1.0, // 전구 자체 밝기. 1을 넘기면 색이 흰색으로 날아가 파스텔처럼 보임
   twinkleSpeed: 1.2, // 깜빡임 속도 (0이면 깜빡임 없음)
