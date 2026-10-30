@@ -61,7 +61,6 @@ export default function TableScene({ players, highlightId = null }) {
         shadow-bias={-0.0005}
         shadow-normalBias={0.03}
       />
-      <Lamp />
       <StringLights />
 
       <Room />
@@ -108,6 +107,11 @@ function Room() {
         <planeGeometry args={[s, s]} />
         <meshStandardMaterial color={ROOM.floorColor} />
       </mesh>
+      {/* 천장: 조명 영향을 안 받는 재질로 어둡게 고정 */}
+      <mesh position={[0, ROOM.ceilingHeight, 0]} rotation={[Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[s, s]} />
+        <meshBasicMaterial color={ROOM.ceilingColor} />
+      </mesh>
       {/* 벽 4개 */}
       {[
         [0, s / 4, -s / 2, 0],
@@ -121,17 +125,6 @@ function Room() {
         </mesh>
       ))}
     </group>
-  );
-}
-
-function Lamp() {
-  return (
-    // 갓 안에 조명이 들어 있어서 일반 재질을 쓰면 안쪽이 너무 밝아지고 블룸이 크게 번진다.
-    // 조명 영향을 안 받는 재질로 어둡게 고정.
-    <mesh position={[0, TABLE.height + 1.65, 0]}>
-      <coneGeometry args={[ROOM.lampShadeRadius, ROOM.lampShadeHeight, 24, 1, true]} />
-      <meshBasicMaterial color={ROOM.lampShadeColor} side={2} />
-    </mesh>
   );
 }
 

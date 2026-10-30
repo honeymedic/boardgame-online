@@ -21,7 +21,7 @@ export const CAMERA = {
   eyeHeight: 1.25, // 앉았을 때 눈높이
   fov: 60,
   pitchMin: -0.7, // 아래로 내려다보는 한계 (라디안)
-  pitchMax: 0.35, // 위로 올려다보는 한계
+  pitchMax: 0.4, // 위로 올려다보는 한계
   yawLimit: 1.9, // 정면 기준 좌우로 돌릴 수 있는 한계 (라디안, 약 110도)
   dragSensitivity: 0.0045, // 마우스 드래그 감도
   keySpeed: 1.6, // 방향키 회전 속도 (라디안/초)
@@ -55,10 +55,9 @@ export const ROOM = {
   floorColor: "#1a1a20",
   wallColor: "#23232b",
   size: 10,
-  lampColor: "#fff1d6",
-  lampShadeColor: "#3a3a40", // 램프 갓 색
-  lampShadeRadius: 0.26, // 램프 갓 반지름
-  lampShadeHeight: 0.2, // 램프 갓 높이
+  ceilingColor: "#15151a", // 천장 색 (조명 영향 없이 이 색 그대로)
+  ceilingHeight: 3.2,
+  lampColor: "#fff1d6", // 테이블을 비추는 보이지 않는 조명의 색
   lampIntensity: 18,
   ambient: 0.35,
 };
