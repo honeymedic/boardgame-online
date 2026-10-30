@@ -47,6 +47,10 @@ client/            React + Vite 클라이언트 (화면만 담당)
 
 ## 배포 (Render)
 
+**플레이 주소: https://boardgame-online-4chb.onrender.com/**
+
+깃허브 `main`에 푸시하면 Render가 자동으로 다시 배포한다 (2~4분). 무료 티어라 15분간 접속이 없으면 잠들고, 첫 접속 때 30초~1분 걸려 깨어난다.
+
 서버 하나가 빌드된 클라이언트까지 같이 내보낸다. Render 설정값:
 
 | 항목 | 값 |
@@ -71,6 +75,6 @@ $env:NODE_ENV="production"; npm start
 
 1. ~~방 시스템~~ ✅
 2. ~~쿠 규칙 (서버 상태 머신) + 게임 화면~~ ✅
-3. 무료 호스팅 배포 (Render) → 링크 공유로 플레이
+3. ~~무료 호스팅 배포 (Render) → 링크 공유로 플레이~~ ✅
 4. Electron으로 설치형 포장
 5. 다른 게임 추가
