@@ -5,6 +5,7 @@ import { computeSeats, eyePosition, tableSpotFor } from "./seats.js";
 import Avatar from "./Avatar.jsx";
 import FirstPersonLook from "./FirstPersonLook.jsx";
 import StringLights from "./StringLights.jsx";
+import { Card3D, Deck3D, Coin3D } from "./Props3D.jsx";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { STRING_LIGHTS } from "./config.js";
 import { socket, playerId } from "../socket.js";
@@ -90,7 +91,7 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
           <Bloom
             intensity={STRING_LIGHTS.bloomIntensity}
             luminanceThreshold={STRING_LIGHTS.bloomThreshold}
-            luminanceSmoothing={0.2}
+            luminanceSmoothing={0.02}
             radius={STRING_LIGHTS.bloomRadius}
             mipmapBlur
           />
@@ -154,14 +155,7 @@ function Table() {
 }
 
 function Deck() {
-  const y = TABLE.height + TABLE.thickness / 2;
-  const h = PROPS.cardThickness * 11;
-  return (
-    <mesh position={[0, y + h / 2, 0]} rotation={[0, 0.2, 0]} castShadow>
-      <boxGeometry args={[PROPS.cardWidth, h, PROPS.cardHeight]} />
-      <meshStandardMaterial color={PROPS.deckColor} />
-    </mesh>
-  );
+  return <Deck3D cards={11} />;
 }
 
 /** 자리 앞에 놓인 뒷면 카드 2장과 동전. */
@@ -171,16 +165,10 @@ function SeatProps({ seat, coins }) {
   return (
     <group position={spot} rotation={[0, yaw, 0]}>
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (PROPS.cardWidth / 2 + PROPS.cardGap / 2), PROPS.cardThickness / 2, 0]} castShadow>
-          <boxGeometry args={[PROPS.cardWidth, PROPS.cardThickness, PROPS.cardHeight]} />
-          <meshStandardMaterial color={PROPS.cardBackColor} />
-        </mesh>
+        <Card3D key={s} position={[s * (PROPS.cardWidth / 2 + PROPS.cardGap / 2), PROPS.cardThickness / 2, 0]} />
       ))}
       {Array.from({ length: coins }).map((_, i) => (
-        <mesh key={i} position={[PROPS.cardWidth + 0.08, PROPS.coinThickness * (i + 0.5), 0.02]} castShadow>
-          <cylinderGeometry args={[PROPS.coinRadius, PROPS.coinRadius, PROPS.coinThickness, 24]} />
-          <meshStandardMaterial color={PROPS.coinColor} metalness={0.8} roughness={0.3} />
-        </mesh>
+        <Coin3D key={i} position={[PROPS.cardWidth + 0.08, PROPS.coinThickness * (i + 0.5), 0.02]} rotation={[0, i * 0.7, 0]} />
       ))}
     </group>
   );

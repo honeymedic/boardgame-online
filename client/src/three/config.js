@@ -45,7 +45,8 @@ export const PROPS = {
   cardWidth: 0.13,
   cardHeight: 0.19,
   cardThickness: 0.004,
-  cardBackColor: "#8b1e2d",
+  cardBackColor: "#8b1e2d", // 텍스처 로딩 전 임시 색
+  cardEdgeColor: "#e8e2d4", // 카드 옆면(종이 단면)
   cardGap: 0.03,
   cardDistanceFromEdge: 0.3, // 자기 자리 앞 카드가 테이블 가장자리에서 들어온 거리
   coinRadius: 0.035,
@@ -88,7 +89,7 @@ export const STRING_LIGHTS = {
   // 빛 번짐 (네온 느낌의 핵심). 전구처럼 밝은 것만 번진다.
   bloom: true,
   bloomIntensity: 2.0, // 번짐 세기
-  bloomThreshold: 0.8, // 이 밝기 이상인 것만 번짐 (전구만 걸리게 높게)
+  bloomThreshold: 1.0, // 이 밝기 이상인 것만 번짐. 1.0이면 일반 물체(카드, 동전, 테이블)는 절대 안 번지고 전구(glow>1)만 번짐
   bloomRadius: 0.95, // 번짐 반경 (클수록 부드럽고 넓게 퍼짐)
 };
 
