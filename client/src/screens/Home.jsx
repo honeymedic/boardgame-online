@@ -1,20 +1,24 @@
 import { useState } from "react";
-import { request } from "../socket.js";
+import { request, getAvatar, saveAvatar, getNickname, saveNickname } from "../socket.js";
 
 export default function Home({ onEnter }) {
-  const [nickname, setNickname] = useState(localStorage.getItem("nickname") || "");
+  const [nickname, setNickname] = useState(getNickname);
+  const [avatar, setAvatar] = useState(getAvatar);
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const saveNick = () => localStorage.setItem("nickname", nickname.trim());
+  const persist = () => {
+    saveNickname(nickname.trim());
+    saveAvatar(avatar);
+  };
 
   const create = async () => {
     setError("");
     setBusy(true);
     try {
-      saveNick();
-      const res = await request("room:create", { nickname });
+      persist();
+      const res = await request("room:create", { nickname, avatar });
       onEnter(res.room);
     } catch (e) {
       setError(e.message);
@@ -28,8 +32,8 @@ export default function Home({ onEnter }) {
     setError("");
     setBusy(true);
     try {
-      saveNick();
-      const res = await request("room:join", { code: code.trim(), nickname });
+      persist();
+      const res = await request("room:join", { code: code.trim(), nickname, avatar });
       onEnter(res.room);
     } catch (e) {
       setError(e.message);
@@ -53,6 +57,18 @@ export default function Home({ onEnter }) {
         />
       </label>
 
+      <div className="avatar-row">
+        <AvatarPreview avatar={avatar} />
+        <label>
+          옷 색
+          <input type="color" value={avatar.body} onChange={(e) => setAvatar({ ...avatar, body: e.target.value })} />
+        </label>
+        <label>
+          머리 색
+          <input type="color" value={avatar.head} onChange={(e) => setAvatar({ ...avatar, head: e.target.value })} />
+        </label>
+      </div>
+
       <button className="primary" onClick={create} disabled={busy}>
         방 만들기
       </button>
@@ -74,5 +90,15 @@ export default function Home({ onEnter }) {
 
       {error && <p className="error">{error}</p>}
     </main>
+  );
+}
+
+/** 2D 미리보기: 머리(원) + 몸통(둥근 사각형). 3D 아바타와 같은 색을 쓴다. */
+function AvatarPreview({ avatar }) {
+  return (
+    <div className="avatar-preview">
+      <div className="avatar-preview-head" style={{ background: avatar.head }} />
+      <div className="avatar-preview-body" style={{ background: avatar.body }} />
+    </div>
   );
 }

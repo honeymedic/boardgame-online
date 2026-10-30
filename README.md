@@ -18,6 +18,19 @@ npm run dev
 
 또는 `dev.cmd`를 더블클릭. 브라우저에서 http://localhost:5173 접속.
 
+혼자서 여러 명 테스트: 탭마다 주소 뒤에 `?tab=2`, `?tab=3`처럼 붙이면 서로 다른 플레이어로 인식된다.
+
+## 3D 테이블 (시제품)
+
+로비의 "테이블에 앉아보기"로 들어간다. 1인칭 시점, 마우스 드래그 / 방향키로 고개를 돌리고, 고개 방향은 같은 방 사람들에게 실시간으로 보인다.
+
+- `client/src/three/config.js` — 테이블 크기, 카메라 높이, 아바타 크기, 색, 감도 등 **조정할 값은 전부 여기**. 숫자 바꾸고 저장하면 바로 반영.
+- `client/src/three/TableScene.jsx` — 장면 구성 (테이블, 조명, 덱, 자리별 카드/동전)
+- `client/src/three/Avatar.jsx` — 아바타 (몸통+머리+눈). 머리가 시선 방향으로 회전
+- `client/src/three/FirstPersonLook.jsx` — 1인칭 카메라 조작과 시선 전송
+- `client/src/three/seats.js` — N명을 타원 둘레에 배치하는 계산
+- 아바타 설정(`avatar: {body, head}`)은 홈 화면에서 고르고 서버가 검증한다. 항목을 늘리려면 `server/src/rooms.js`의 `sanitizeAvatar`도 같이 수정.
+
 ## 폴더 구조
 
 ```
@@ -44,6 +57,7 @@ client/            React + Vite 클라이언트 (화면만 담당)
 | 클라 → 서버 | `game:action` `{type, ...}` | `action` / `pass` / `challenge` / `block` / `lose` / `exchange` |
 | 서버 → 클라 | `room:update` | 방 상태 전체 (방 안 모두에게) |
 | 서버 → 클라 | `game:update` | 게임 상태. 받는 사람이 봐도 되는 정보만 (개인별로 다름) |
+| 양방향 | `look` `{yaw, pitch}` | 시선 방향. 서버는 저장 없이 같은 방 다른 사람에게 중계 |
 
 ## 배포 (Render)
 
@@ -76,5 +90,6 @@ $env:NODE_ENV="production"; npm start
 1. ~~방 시스템~~ ✅
 2. ~~쿠 규칙 (서버 상태 머신) + 게임 화면~~ ✅
 3. ~~무료 호스팅 배포 (Render) → 링크 공유로 플레이~~ ✅
-4. Electron으로 설치형 포장
-5. 다른 게임 추가
+4. 3D 테이블: ~~시제품 (자리, 아바타, 시선 공유)~~ ✅ → 게임 연결 (카드/동전/턴/버튼을 3D에) → 연출 (카드 뒤집기, 동전 이동)
+5. Electron으로 설치형 포장
+6. 다른 게임 추가

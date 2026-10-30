@@ -8,6 +8,20 @@ const CODE_CHARS ="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O, 1/I �
 const MIN_PLAYERS = 2;
 const MAX_PLAYERS = 6;
 
+// 아바타 설정. 지금은 색 두 가지뿐이지만 나중에 모자, 눈 모양 등을 여기에 추가한다.
+const DEFAULT_AVATAR = { body: "#5b8def", head: "#f2d3b3" };
+const COLOR_RE = /^#[0-9a-fA-F]{6}$/;
+
+function sanitizeAvatar(a) {
+  // 클라이언트가 보낸 값은 믿지 않고 형식을 검사해서 받는다
+  const out = { ...DEFAULT_AVATAR };
+  if (a && typeof a === "object") {
+    if (COLOR_RE.test(a.body)) out.body = a.body;
+    if (COLOR_RE.test(a.head)) out.head = a.head;
+  }
+  return out;
+}
+
 export class RoomManager {
   constructor() {
     /** @type {Map<string, Room>} 코드 → 방 */
@@ -25,7 +39,7 @@ export class RoomManager {
     return code;
   }
 
-  create({ playerId, nickname }) {
+  create({ playerId, nickname, avatar }) {
     const code = this.generateCode();
     const room = {
       code,
@@ -36,11 +50,11 @@ export class RoomManager {
       createdAt: Date.now(),
     };
     this.rooms.set(code, room);
-    this.addPlayer(room, { playerId, nickname });
+    this.addPlayer(room, { playerId, nickname, avatar });
     return room;
   }
 
-  join({ code, playerId, nickname }) {
+  join({ code, playerId, nickname, avatar }) {
     const room = this.rooms.get(code.toUpperCase());
     if (!room) throw new Error("존재하지 않는 방 코드입니다.");
 
@@ -49,21 +63,23 @@ export class RoomManager {
     if (existing) {
       existing.connected = true;
       if (nickname) existing.nickname = nickname;
+      if (avatar) existing.avatar = sanitizeAvatar(avatar);
       return room;
     }
 
     if (room.status !== "lobby") throw new Error("이미 게임이 시작된 방입니다.");
     if (room.players.length >= MAX_PLAYERS) throw new Error("방이 가득 찼습니다.");
 
-    this.addPlayer(room, { playerId, nickname });
+    this.addPlayer(room, { playerId, nickname, avatar });
     return room;
   }
 
-  addPlayer(room, { playerId, nickname }) {
+  addPlayer(room, { playerId, nickname, avatar }) {
     room.players.push({
       id: playerId,
       nickname: nickname?.trim() || `플레이어${room.players.length + 1}`,
       connected: true,
+      avatar: sanitizeAvatar(avatar),
     });
   }
 
@@ -127,6 +143,7 @@ export class RoomManager {
         id: p.id,
         nickname: p.nickname,
         connected: p.connected,
+        avatar: p.avatar,
       })),
       minPlayers: MIN_PLAYERS,
       maxPlayers: MAX_PLAYERS,

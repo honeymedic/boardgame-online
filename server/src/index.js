@@ -52,9 +52,9 @@ io.on("connection", (socket) => {
 
   console.log(`[연결] ${playerId.slice(0, 8)}`);
 
-  socket.on("room:create", ({ nickname }, cb) => {
+  socket.on("room:create", ({ nickname, avatar }, cb) => {
     try {
-      const room = rooms.create({ playerId, nickname });
+      const room = rooms.create({ playerId, nickname, avatar });
       currentCode = room.code;
       socket.join(room.code);
       cb?.({ ok: true, room: rooms.toPublic(room) });
@@ -64,9 +64,9 @@ io.on("connection", (socket) => {
     }
   });
 
-  socket.on("room:join", ({ code, nickname }, cb) => {
+  socket.on("room:join", ({ code, nickname, avatar }, cb) => {
     try {
-      const room = rooms.join({ code, playerId, nickname });
+      const room = rooms.join({ code, playerId, nickname, avatar });
       currentCode = room.code;
       socket.join(room.code);
       cb?.({ ok: true, room: rooms.toPublic(room) });
@@ -111,6 +111,15 @@ io.on("connection", (socket) => {
     } catch (e) {
       cb?.({ ok: false, error: e.message });
     }
+  });
+
+  // 시선(고개 방향) 중계. 게임 상태와 무관하고 저장하지 않는다. 같은 방 다른 사람에게만 그대로 전달.
+  socket.on("look", (data) => {
+    if (!currentCode) return;
+    const yaw = Number(data?.yaw);
+    const pitch = Number(data?.pitch);
+    if (!Number.isFinite(yaw) || !Number.isFinite(pitch)) return;
+    socket.to(currentCode).emit("look", { playerId, yaw, pitch });
   });
 
   socket.on("room:reset", (_data, cb) => {

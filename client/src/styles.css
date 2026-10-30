@@ -306,3 +306,45 @@ button.danger { border-color: var(--error); color: var(--error); }
   gap: 3px;
 }
 .log-turn { color: var(--text); font-weight: 600; margin-top: 4px; }
+
+/* ───────── 아바타 설정 ───────── */
+.avatar-row { display: flex; align-items: center; gap: 14px; }
+.avatar-row label { flex: 1; }
+.avatar-row input[type="color"] { padding: 2px; height: 40px; cursor: pointer; }
+.avatar-preview { display: flex; flex-direction: column; align-items: center; gap: 2px; width: 56px; }
+.avatar-preview-head { width: 26px; height: 26px; border-radius: 50%; }
+.avatar-preview-body { width: 36px; height: 30px; border-radius: 12px 12px 6px 6px; }
+.mini-avatar {
+  display: inline-block;
+  width: 14px; height: 18px;
+  border-radius: 7px 7px 3px 3px;
+  background: linear-gradient(to bottom, var(--head, #f2d3b3) 0 40%, var(--body, #5b8def) 40%);
+}
+
+/* ───────── 3D 테이블 ───────── */
+.app.fullscreen { padding: 0; display: block; }
+.table-view { position: fixed; inset: 0; }
+.table-view canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.table-overlay {
+  position: absolute;
+  left: 0; right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  pointer-events: none;
+}
+.table-overlay.top { top: 0; }
+.table-overlay button { pointer-events: auto; }
+.nameplate {
+  background: rgba(20, 20, 28, 0.75);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.15);
+  user-select: none;
+}
+.nameplate.highlight { border-color: var(--accent); color: var(--accent); }
+.nameplate.offline { opacity: 0.4; }

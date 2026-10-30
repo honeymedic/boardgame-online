@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { playerId, request } from "../socket.js";
 
-export default function Lobby({ room, onLeave }) {
+export default function Lobby({ room, onLeave, onPreview }) {
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
   const isHost = room.hostId === playerId;
@@ -41,6 +41,7 @@ export default function Lobby({ room, onLeave }) {
         {room.players.map((p) => (
           <li key={p.id} className={p.connected ? "" : "offline"}>
             <span className="dot" />
+            <span className="mini-avatar" style={{ "--body": p.avatar?.body, "--head": p.avatar?.head }} />
             {p.nickname}
             {p.id === room.hostId && <span className="tag">방장</span>}
             {p.id === playerId && <span className="tag me">나</span>}
@@ -58,6 +59,8 @@ export default function Lobby({ room, onLeave }) {
       )}
 
       {error && <p className="error">{error}</p>}
+
+      <button onClick={onPreview}>🪑 테이블에 앉아보기 (3D 미리보기)</button>
 
       <button className="link" onClick={onLeave}>
         방 나가기

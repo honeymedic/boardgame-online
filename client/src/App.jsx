@@ -3,10 +3,12 @@ import { socket, request } from "./socket.js";
 import Home from "./screens/Home.jsx";
 import Lobby from "./screens/Lobby.jsx";
 import Game from "./screens/Game.jsx";
+import Table from "./screens/Table.jsx";
 
 export default function App() {
   const [room, setRoom] = useState(null);
   const [game, setGame] = useState(null);
+  const [preview, setPreview] = useState(false); // 로비에서 3D 테이블 미리보기 중인지
   const [connected, setConnected] = useState(socket.connected);
 
   useEffect(() => {
@@ -60,11 +62,13 @@ export default function App() {
 
   let screen;
   if (!room) screen = <Home onEnter={enterRoom} />;
-  else if (room.status === "lobby") screen = <Lobby room={room} onLeave={leaveRoom} />;
+  else if (room.status === "lobby" && preview) screen = <Table room={room} onBack={() => setPreview(false)} />;
+  else if (room.status === "lobby") screen = <Lobby room={room} onLeave={leaveRoom} onPreview={() => setPreview(true)} />;
   else screen = <Game room={room} game={game} onLeave={leaveRoom} />;
 
+  const fullscreen = room?.status === "lobby" && preview;
   return (
-    <div className="app">
+    <div className={`app ${fullscreen ? "fullscreen" : ""}`}>
       {!connected && <div className="banner">서버에 연결 중...</div>}
       {screen}
     </div>
