@@ -129,7 +129,7 @@ function Lamp() {
     // 갓 안에 조명이 들어 있어서 일반 재질을 쓰면 안쪽이 너무 밝아지고 블룸이 크게 번진다.
     // 조명 영향을 안 받는 재질로 어둡게 고정.
     <mesh position={[0, TABLE.height + 1.65, 0]}>
-      <coneGeometry args={[0.35, 0.25, 24, 1, true]} />
+      <coneGeometry args={[ROOM.lampShadeRadius, ROOM.lampShadeHeight, 24, 1, true]} />
       <meshBasicMaterial color={ROOM.lampShadeColor} side={2} />
     </mesh>
   );
