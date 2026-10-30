@@ -55,7 +55,7 @@ export const ROOM = {
   floorColor: "#1a1a20",
   wallColor: "#23232b",
   size: 10,
-  ceilingColor: "#15151a", // 천장 색 (조명 영향 없이 이 색 그대로)
+  ceilingColor: "#0c0c0f", // 천장 색 (조명 영향 없이 이 색 그대로)
   ceilingHeight: 3.2,
   lampColor: "#fff1d6", // 테이블을 비추는 보이지 않는 조명의 색
   lampIntensity: 18,
