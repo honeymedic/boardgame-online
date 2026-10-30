@@ -56,6 +56,7 @@ export const ROOM = {
   wallColor: "#23232b",
   size: 10,
   lampColor: "#fff1d6",
+  lampShadeColor: "#3a3a40", // 램프 갓 색
   lampIntensity: 18,
   ambient: 0.35,
 };
