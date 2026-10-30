@@ -59,7 +59,7 @@ function Bone({ a, b, radius, color }) {
  *  bendHint: 팔꿈치가 꺾이는 방향 힌트 (보통 아래+바깥)
  *  holdingCard: 손에 카드(뒷면이 바깥을 향함)를 쥔 모습
  */
-export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard = false, instant = false, showShoulder = true }) {
+export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard = false, cardCount = 1, instant = false, showShoulder = true }) {
   const elbow = useMemo(() => new THREE.Vector3(), []);
   const hand = useMemo(() => new THREE.Vector3().copy(target), []);
   const hint = useMemo(() => new THREE.Vector3(...bendHint), [bendHint]);
@@ -93,7 +93,7 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
     if (shoulderRef.current) shoulderRef.current.position.copy(shoulder);
     if (cardRef.current) {
       // 카드는 손 바로 앞에 세워서, 뒷면이 손이 뻗은 방향(바깥)을 보게
-      cardRef.current.position.copy(hand).addScaledVector(tmp.dir, 0.05);
+      cardRef.current.position.copy(hand).addScaledVector(tmp.dir, HAND.handBelowCard * 0.9);
       cardRef.current.quaternion.setFromUnitVectors(UP, tmp.dir);
     }
   });
@@ -112,7 +112,14 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
       </mesh>
       {holdingCard && (
         <group ref={cardRef}>
-          <Card3D position={[0, 0, 0]} />
+          {Array.from({ length: Math.max(1, cardCount) }).map((_, i) => {
+            const side = cardCount === 1 ? 0 : i === 0 ? -1 : 1;
+            return (
+              <group key={i} position={[side * HAND.cardFanSpread, 0, i * 0.004]} rotation={[0, 0, -side * HAND.cardFanAngle]}>
+                <Card3D position={[0, 0, 0]} />
+              </group>
+            );
+          })}
         </group>
       )}
     </group>
@@ -126,7 +133,8 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
  *  - 왼손: 카드를 들었으면(holdIndex) 카드 위치로
  *  - 손 위치와 동작을 서버로 보낸다
  */
-export function MyHands({ holdIndex, onPutDown, onSendHand, onSendGesture, avatar }) {
+export function MyHands({ holdCount = 0, onPutDown, onSendHand, onSendGesture, avatar }) {
+  const holdIndex = holdCount > 0 ? holdCount : null; // 서버에는 든 장수를 보낸다 (없으면 null)
   const { camera, gl } = useThree();
   const rightShoulder = useMemo(() => new THREE.Vector3(), []);
   const leftShoulder = useMemo(() => new THREE.Vector3(), []);
@@ -151,13 +159,14 @@ export function MyHands({ holdIndex, onPutDown, onSendHand, onSendGesture, avata
     const el = gl.domElement;
     const onClick = (e) => {
       if (e.button !== 0) return;
-      // 카드를 들고 있으면 어디를 클릭하든 내려놓는다 (든 카드는 조준점 밖에 있어서 다시 맞추기 어렵다)
-      if (holdIndex != null) {
-        onPutDown?.();
-        return;
-      }
+      // 1) 조준점에 집을 수 있는 물체가 있으면 집기 (두 번째 카드도 이렇게 집는다)
       if (crosshair.object?.userData?.onInteract) {
         crosshair.object.userData.onInteract();
+        return;
+      }
+      // 2) 카드를 들고 있으면 어디를 클릭하든 전부 내려놓는다 (든 카드는 조준점 밖에 있어서 다시 맞추기 어렵다)
+      if (holdIndex != null) {
+        onPutDown?.();
         return;
       }
       const from = rightTarget.clone();
@@ -207,8 +216,11 @@ export function MyHands({ holdIndex, onPutDown, onSendHand, onSendGesture, avata
     }
     if (!swing.current) rightTarget.copy(aim);
 
-    // 왼손: 카드를 들었으면 카드 위치
-    if (holdIndex != null) leftTarget.set(...HAND.cardHoldOffset).applyQuaternion(camera.quaternion).add(camera.position);
+    // 왼손: 카드를 들었으면 카드 아래쪽을 잡는다 (카드를 가리지 않게 손은 카드보다 아래)
+    if (holdIndex != null) {
+      leftTarget.set(HAND.cardHoldOffset[0], HAND.cardHoldOffset[1] - HAND.handBelowCard, HAND.cardHoldOffset[2] + 0.08);
+      leftTarget.applyQuaternion(camera.quaternion).add(camera.position);
+    }
 
     // 전송
     const now = performance.now();

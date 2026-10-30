@@ -79,7 +79,9 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
   }, []);
 
   // 내가 왼손에 든 카드 번호 (없으면 null)
-  const [myHold, setMyHold] = useState(null);
+  const [myHeld, setMyHeld] = useState([]); // 든 순서대로 카드 번호. 최대 2장
+  const pickCard = (idx) => setMyHeld((h) => (h.includes(idx) || h.length >= 2 ? h : [...h, idx]));
+  const putDownAll = () => setMyHeld([]);
   const me = players[myIndex];
 
   const sendLook = (look) => socket.emit("look", look);
@@ -90,7 +92,7 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
     <Canvas shadows camera={{ fov: 60, near: 0.05, far: 50 }} style={{ background: ROOM.floorColor }}>
       <PointerInstaller />
       <FirstPersonLook eye={eyePosition(mySeat)} baseYaw={mySeat.yaw} onLook={sendLook} />
-      <MyHands holdIndex={myHold} onPutDown={() => setMyHold(null)} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
+      <MyHands holdCount={myHeld.length} onPutDown={putDownAll} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
 
       <ambientLight intensity={ROOM.ambient} />
       <pointLight
@@ -128,8 +130,8 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
             coins={2}
             mine={i === myIndex}
             hand={i === myIndex ? sampleHand(p.id) : null}
-            held={myHold}
-            onPickChange={setMyHold}
+            held={myHeld}
+            onPick={pickCard}
           />
         </group>
       ))}
@@ -225,7 +227,7 @@ function PointerInstaller() {
   return null;
 }
 
-function SeatProps({ seat, coins, mine = false, hand = null, held = null, onPickChange }) {
+function SeatProps({ seat, coins, mine = false, hand = null, held = [], onPick }) {
   const spot = tableSpotFor(seat, PROPS.cardDistanceFromEdge);
   const yaw = seat.yaw;
   return (
@@ -233,7 +235,7 @@ function SeatProps({ seat, coins, mine = false, hand = null, held = null, onPick
       {[-1, 1].map((s, idx) => {
         const pos = [s * (PROPS.cardWidth / 2 + PROPS.cardGap / 2), PROPS.cardThickness / 2, 0];
         return mine ? (
-          <HandCard key={s} restPosition={pos} character={hand?.[idx] ?? null} index={idx} held={held} onPickChange={onPickChange} />
+          <HandCard key={s} restPosition={pos} character={hand?.[idx] ?? null} index={idx} held={held} onPick={onPick} />
         ) : (
           <Card3D key={s} position={pos} />
         );

@@ -23,6 +23,7 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
   const rightTarget = useMemo(() => new THREE.Vector3(0.28, SEAT_HEIGHT + 0.3, -0.35), []); // 기본: 테이블 위 휴식
   const leftTarget = useMemo(() => new THREE.Vector3(-0.28, SEAT_HEIGHT + 0.3, -0.35), []);
   const [holding, setHolding] = useState(false);
+  const [holdCount, setHoldCount] = useState(1);
   const tmpV = useMemo(() => new THREE.Vector3(), []);
 
   useFrame(() => {
@@ -47,6 +48,7 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
     // 왼손: 카드를 들었으면 얼굴 앞으로 올림
     const isHolding = h?.hold != null;
     if (isHolding !== holding) setHolding(isHolding);
+    if (isHolding && h.hold !== holdCount) setHoldCount(h.hold);
     if (isHolding) leftTarget.set(-0.22, SEAT_HEIGHT + AVATAR.bodyHeight + 0.05, -0.3);
     else leftTarget.set(-0.28, SEAT_HEIGHT + 0.3, -0.35);
   });
@@ -80,7 +82,7 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
     <group ref={groupRef} position={seat.position} rotation={[0, seat.yaw, 0]}>
       {/* 팔 */}
       <Arm shoulder={rightShoulder} target={rightTarget} bendHint={[0.5, -1, 0]} color={avatar.body} handColor={avatar.head} />
-      <Arm shoulder={leftShoulder} target={leftTarget} bendHint={[-0.5, -1, 0]} color={avatar.body} handColor={avatar.head} holdingCard={holding} />
+      <Arm shoulder={leftShoulder} target={leftTarget} bendHint={[-0.5, -1, 0]} color={avatar.body} handColor={avatar.head} holdingCard={holding} cardCount={holdCount} />
       {/* 의자 */}
       <mesh position={[0, SEAT_HEIGHT / 2, 0.05]} castShadow receiveShadow>
         <boxGeometry args={[0.45, SEAT_HEIGHT, 0.45]} />

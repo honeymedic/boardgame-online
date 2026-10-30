@@ -51,3 +51,5 @@ export function installPointer(el) {
     if (document.pointerLockElement === el) document.exitPointerLock();
   };
 }
+
+if (import.meta.env.DEV) window.__input = { pointer, crosshair, interactables }; // 개발 중 콘솔 디버깅용

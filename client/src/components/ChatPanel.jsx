@@ -14,7 +14,18 @@ export default function ChatPanel({ messages, compact = false }) {
   const [open, setOpen] = useState(!compact);
   const [unread, setUnread] = useState(0);
   const listRef = useRef(null);
+  const inputRef = useRef(null);
   const lastCount = useRef(messages.length);
+
+  // 단축키 T (3D 화면 등에서 window 이벤트로 요청): 패널 열고 입력칸에 포커스
+  useEffect(() => {
+    const onFocusReq = () => {
+      setOpen(true);
+      setTimeout(() => inputRef.current?.focus(), 0);
+    };
+    window.addEventListener("chat:focus", onFocusReq);
+    return () => window.removeEventListener("chat:focus", onFocusReq);
+  }, []);
 
   // 새 메시지가 오면 아래로 스크롤. 접혀 있으면 안 읽은 개수 표시.
   useEffect(() => {
@@ -70,11 +81,15 @@ export default function ChatPanel({ messages, compact = false }) {
 
           <form className="chat-form" onSubmit={send}>
             <input
+              ref={inputRef}
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="메시지 입력 후 Enter"
               maxLength={200}
-              onKeyDown={(e) => e.stopPropagation()} // 3D 화면의 방향키 조작과 충돌 방지
+              onKeyDown={(e) => {
+                e.stopPropagation(); // 3D 화면의 방향키/단축키와 충돌 방지
+                if (e.key === "Escape") e.currentTarget.blur();
+              }}
             />
             <button type="submit" disabled={!text.trim()}>
               보내기

@@ -411,3 +411,5 @@ button.danger { border-color: var(--error); color: var(--error); }
   pointer-events: none;
 }
 .crosshair.idle { opacity: 0.35; }
+.table-view:fullscreen { background: var(--bg); }
+.table-overlay.top .row { pointer-events: auto; gap: 6px; }
