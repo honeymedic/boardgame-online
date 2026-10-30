@@ -15,9 +15,34 @@ export default function StringLights() {
   const meshRef = useRef();
   const colorObj = useMemo(() => new THREE.Color(), []);
   const baseColors = useMemo(
-    () => bulbs.map((b) => new THREE.Color(S.warmOnly ? "#ff9a2e" : S.colors[b.colorIndex % S.colors.length])),
+    () => bulbs.map((b) => new THREE.Color(S.warmOnly ? S.warmColor : S.colors[b.colorIndex % S.colors.length])),
     [bulbs]
   );
+
+  // 전구 주변 빛무리(헤일로): 가운데가 밝고 가장자리로 갈수록 투명한 원형 텍스처를 항상 카메라를 향하는 스프라이트로 붙인다.
+  const haloMaterial = useMemo(() => {
+    const size = 128;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, "rgba(255,255,255,1)");
+    g.addColorStop(0.25, "rgba(255,255,255,0.45)");
+    g.addColorStop(0.6, "rgba(255,255,255,0.08)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    const texture = new THREE.CanvasTexture(canvas);
+    return new THREE.SpriteMaterial({
+      map: texture,
+      color: new THREE.Color(S.warmOnly ? S.warmColor : "#ffffff"),
+      transparent: true,
+      opacity: S.haloOpacity,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      toneMapped: false,
+    });
+  }, []);
 
   useFrame(({ clock }) => {
     const mesh = meshRef.current;
@@ -31,7 +56,7 @@ export default function StringLights() {
       mesh.setMatrixAt(i, dummy.matrix);
       // 전구마다 위상을 다르게 해서 제각각 깜빡이게
       const tw = S.twinkleSpeed > 0 ? 1 - S.twinkleAmount * (0.5 + 0.5 * Math.sin(t * S.twinkleSpeed + b.phase)) : 1;
-      colorObj.copy(baseColors[i]).multiplyScalar(S.glow * tw);
+      colorObj.copy(baseColors[i]).multiplyScalar(S.glow * tw * b.brightness);
       mesh.setColorAt(i, colorObj);
     }
     mesh.instanceMatrix.needsUpdate = true;
@@ -48,6 +73,15 @@ export default function StringLights() {
         <sphereGeometry args={[S.bulbRadius, 10, 8]} />
         <meshBasicMaterial toneMapped={false} />
       </instancedMesh>
+      {/* 빛무리 */}
+      {bulbs.map((b, i) => (
+        <sprite
+          key={i}
+          material={haloMaterial}
+          position={[b.x, b.y, b.z]}
+          scale={[S.haloSize * b.brightness, S.haloSize * b.brightness, 1]}
+        />
+      ))}
     </group>
   );
 }
@@ -86,6 +120,7 @@ function buildLayout() {
         z: a[2] + (b[2] - a[2]) * u,
         colorIndex: colorIndex++,
         phase: Math.random() * Math.PI * 2,
+        brightness: 1 - S.warmVariation * Math.random(), // 전구마다 밝기 편차
       });
     }
   }

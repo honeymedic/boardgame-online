@@ -53,11 +53,11 @@ export const PROPS = {
 
 export const ROOM = {
   floorColor: "#1a1a20",
-  wallColor: "#23232b",
+  wallColor: "#0e0e12", // 조명 영향 없이 이 색 그대로. 천장과 같은 값으로 두면 이어짐
   size: 10,
-  ceilingColor: "#0c0c0f", // 천장 색 (조명 영향 없이 이 색 그대로)
+  ceilingColor: "#0e0e12", // 천장 색. wallColor와 같게
   ceilingHeight: 3.2,
-  lampColor: "#ffd24a", // 테이블을 비추는 보이지 않는 조명의 색
+  lampColor: "#fff1d6", // 테이블을 비추는 보이지 않는 조명의 색
   lampIntensity: 18,
   ambient: 0.35,
 };
@@ -70,18 +70,22 @@ export const STRING_LIGHTS = {
   sag: 0.35, // 가운데가 처지는 정도
   spread: 2.6, // 줄이 걸쳐지는 반경 (테이블보다 조금 넓게)
   bulbsPerStrand: 14,
-  bulbRadius: 0.008, // 전구 크기
+  bulbRadius: 0.012, // 전구 크기
   wireColor: "#2a2420",
-  colors: ["#ffe600", "#ffd000", "#ffbf1a"], // 전구 색 (노랑 계열 3톤)
-  warmOnly: false, // true면 전부 따뜻한 주황 전구로
-  glow: 1.0, // 전구 자체 밝기. 1을 넘기면 색이 흰색으로 날아가 파스텔처럼 보임
-  twinkleSpeed: 1.2, // 깜빡임 속도 (0이면 깜빡임 없음)
-  twinkleAmount: 0.35, // 깜빡임 세기 (0~1)
+  colors: ["#ff2bd6", "#00f0ff", "#39ff14", "#ffe600", "#ff3131", "#8a2bff"], // 전구 색 (네온: 분홍, 시안, 라임, 노랑, 빨강, 보라)
+  warmOnly: true, // true면 전부 따뜻한 금빛 전구 (사진 느낌). false면 colors 배열의 네온 색
+  warmColor: "#ffb85c", // 따뜻한 전구 색 (더 하얗게: #ffe3b0, 더 주황: #ffa23a)
+  warmVariation: 0.35, // 전구마다 밝기 편차 (0~1). 사진처럼 어떤 건 더 밝고 어떤 건 은은하게
+  haloSize: 0.16, // 전구 주변 빛무리 크기 (0이면 거의 안 보임)
+  haloOpacity: 0.6, // 빛무리 진하기 (0~1)
+  glow: 1.8, // 전구 밝기. 1 이상이면 중심이 하얗게 타면서 주변에 번짐이 생김 (사진의 전구 느낌)
+  twinkleSpeed: 0.8, // 깜빡임 속도 (0이면 깜빡임 없음)
+  twinkleAmount: 0.3, // 깜빡임 세기 (0~1)
   // 빛 번짐 (네온 느낌의 핵심). 전구처럼 밝은 것만 번진다.
   bloom: true,
-  bloomIntensity: 1.6, // 번짐 세기
-  bloomThreshold: 0.75, // 이 밝기 이상인 것만 번짐 (낮추면 테이블, 눈 흰자 등도 번지기 시작)
-  bloomRadius: 0.7, // 번짐 반경
+  bloomIntensity: 2.0, // 번짐 세기
+  bloomThreshold: 0.8, // 이 밝기 이상인 것만 번짐 (전구만 걸리게 높게)
+  bloomRadius: 0.95, // 번짐 반경 (클수록 부드럽고 넓게 퍼짐)
 };
 
 export const NETWORK = {

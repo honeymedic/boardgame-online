@@ -107,12 +107,12 @@ function Room() {
         <planeGeometry args={[s, s]} />
         <meshStandardMaterial color={ROOM.floorColor} />
       </mesh>
-      {/* 천장: 조명 영향을 안 받는 재질로 어둡게 고정 */}
+      {/* 천장: 벽과 같이 조명 영향 없는 재질. 색 값이 그대로 보인다 */}
       <mesh position={[0, ROOM.ceilingHeight, 0]} rotation={[Math.PI / 2, 0, 0]}>
         <planeGeometry args={[s, s]} />
         <meshBasicMaterial color={ROOM.ceilingColor} />
       </mesh>
-      {/* 벽 4개 */}
+      {/* 벽 4개: 조명 영향 없는 재질. 색 값이 그대로 보인다 */}
       {[
         [0, s / 4, -s / 2, 0],
         [0, s / 4, s / 2, Math.PI],
@@ -121,7 +121,7 @@ function Room() {
       ].map(([x, y, z, ry], i) => (
         <mesh key={i} position={[x, y, z]} rotation={[0, ry, 0]}>
           <planeGeometry args={[s, s / 2]} />
-          <meshStandardMaterial color={ROOM.wallColor} />
+          <meshBasicMaterial color={ROOM.wallColor} />
         </mesh>
       ))}
     </group>
