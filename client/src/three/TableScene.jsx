@@ -5,6 +5,8 @@ import { computeSeats, eyePosition, tableSpotFor } from "./seats.js";
 import Avatar from "./Avatar.jsx";
 import FirstPersonLook from "./FirstPersonLook.jsx";
 import StringLights from "./StringLights.jsx";
+import { EffectComposer, Bloom } from "@react-three/postprocessing";
+import { STRING_LIGHTS } from "./config.js";
 import { socket, playerId } from "../socket.js";
 
 /**
@@ -81,6 +83,19 @@ export default function TableScene({ players, highlightId = null }) {
           <SeatProps seat={seats[i]} coins={2} />
         </group>
       ))}
+
+      {/* 빛 번짐 후처리: 전구처럼 밝은 부분만 네온처럼 번진다 */}
+      {STRING_LIGHTS.enabled && STRING_LIGHTS.bloom && (
+        <EffectComposer disableNormalPass>
+          <Bloom
+            intensity={STRING_LIGHTS.bloomIntensity}
+            luminanceThreshold={STRING_LIGHTS.bloomThreshold}
+            luminanceSmoothing={0.2}
+            radius={STRING_LIGHTS.bloomRadius}
+            mipmapBlur
+          />
+        </EffectComposer>
+      )}
     </Canvas>
   );
 }

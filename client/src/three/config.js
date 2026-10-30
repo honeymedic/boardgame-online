@@ -33,7 +33,7 @@ export const AVATAR = {
   headRadius: 0.16,
   eyeRadius: 0.022, // 눈동자 크기 (흰자는 이것의 약 2배)
   eyeColor: "#1a1a1a", // 눈동자
-  eyeWhiteColor: "#f4f4f4", // 흰자
+  eyeWhiteColor: "#d9d9d9", // 흰자 (너무 밝으면 블룸 때문에 눈이 빛나 보임)
   headTurnSmoothing: 8, // 클수록 상대 고개가 빨리 따라옴
   nameOffset: 0.3, // 머리 위 이름표 높이
 };
@@ -70,11 +70,16 @@ export const STRING_LIGHTS = {
   bulbsPerStrand: 14,
   bulbRadius: 0.028,
   wireColor: "#2a2420",
-  colors: ["#ffb347", "#ff6b6b", "#ffe66d", "#7bd389", "#6ec6ff", "#ff9ff3"], // 전구 색 (순서대로 반복)
-  warmOnly: false, // true면 전부 따뜻한 노란색으로
-  glow: 2.2, // 전구 밝기
+  colors: ["#ff2bd6", "#00f0ff", "#39ff14", "#ffe600", "#ff3131", "#8a2bff"], // 전구 색 (네온: 분홍, 시안, 라임, 노랑, 빨강, 보라)
+  warmOnly: false, // true면 전부 따뜻한 주황 전구로
+  glow: 1.0, // 전구 자체 밝기. 1을 넘기면 색이 흰색으로 날아가 파스텔처럼 보임
   twinkleSpeed: 1.2, // 깜빡임 속도 (0이면 깜빡임 없음)
-  twinkleAmount: 0.45, // 깜빡임 세기 (0~1)
+  twinkleAmount: 0.35, // 깜빡임 세기 (0~1)
+  // 빛 번짐 (네온 느낌의 핵심). 전구처럼 밝은 것만 번진다.
+  bloom: true,
+  bloomIntensity: 1.6, // 번짐 세기
+  bloomThreshold: 0.75, // 이 밝기 이상인 것만 번짐 (낮추면 테이블, 눈 흰자 등도 번지기 시작)
+  bloomRadius: 0.7, // 번짐 반경
 };
 
 export const NETWORK = {

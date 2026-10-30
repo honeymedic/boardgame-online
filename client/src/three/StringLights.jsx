@@ -15,7 +15,7 @@ export default function StringLights() {
   const meshRef = useRef();
   const colorObj = useMemo(() => new THREE.Color(), []);
   const baseColors = useMemo(
-    () => bulbs.map((b) => new THREE.Color(S.warmOnly ? "#ffcf7a" : S.colors[b.colorIndex % S.colors.length])),
+    () => bulbs.map((b) => new THREE.Color(S.warmOnly ? "#ff9a2e" : S.colors[b.colorIndex % S.colors.length])),
     [bulbs]
   );
 
@@ -43,9 +43,9 @@ export default function StringLights() {
       {strands.map((pts, i) => (
         <Line key={i} points={pts} color={S.wireColor} lineWidth={1} />
       ))}
+      {/* 전구: 조명 영향을 안 받는 자체발광 재질. 색은 instanceColor로 개별 지정. toneMapped를 꺼야 색이 그대로 나온다 */}
       <instancedMesh ref={meshRef} args={[undefined, undefined, bulbs.length]}>
         <sphereGeometry args={[S.bulbRadius, 10, 8]} />
-        {/* color는 instanceColor가 덮어쓰고, emissive는 흰색으로 두고 instanceColor와 곱해지도록 toneMapped 끔 */}
         <meshBasicMaterial toneMapped={false} />
       </instancedMesh>
     </group>
