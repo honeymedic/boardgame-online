@@ -4,6 +4,7 @@ import { TABLE, PROPS, ROOM } from "./config.js";
 import { computeSeats, eyePosition, tableSpotFor } from "./seats.js";
 import Avatar from "./Avatar.jsx";
 import FirstPersonLook from "./FirstPersonLook.jsx";
+import StringLights from "./StringLights.jsx";
 import { socket, playerId } from "../socket.js";
 
 /**
@@ -59,6 +60,7 @@ export default function TableScene({ players, highlightId = null }) {
         shadow-normalBias={0.03}
       />
       <Lamp />
+      <StringLights />
 
       <Room />
       <Table />

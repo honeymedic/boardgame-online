@@ -31,8 +31,9 @@ export const AVATAR = {
   bodyRadius: 0.22,
   bodyHeight: 0.55,
   headRadius: 0.16,
-  eyeRadius: 0.025,
-  eyeColor: "#1a1a1a",
+  eyeRadius: 0.022, // 눈동자 크기 (흰자는 이것의 약 2배)
+  eyeColor: "#1a1a1a", // 눈동자
+  eyeWhiteColor: "#f4f4f4", // 흰자
   headTurnSmoothing: 8, // 클수록 상대 고개가 빨리 따라옴
   nameOffset: 0.3, // 머리 위 이름표 높이
 };
@@ -57,6 +58,23 @@ export const ROOM = {
   lampColor: "#fff1d6",
   lampIntensity: 18,
   ambient: 0.35,
+};
+
+// 테이블 위 줄 조명 (크리스마스 전구 느낌)
+export const STRING_LIGHTS = {
+  enabled: true,
+  strands: 4, // 줄 개수
+  height: 2.3, // 줄 양 끝의 높이
+  sag: 0.35, // 가운데가 처지는 정도
+  spread: 2.6, // 줄이 걸쳐지는 반경 (테이블보다 조금 넓게)
+  bulbsPerStrand: 14,
+  bulbRadius: 0.028,
+  wireColor: "#2a2420",
+  colors: ["#ffb347", "#ff6b6b", "#ffe66d", "#7bd389", "#6ec6ff", "#ff9ff3"], // 전구 색 (순서대로 반복)
+  warmOnly: false, // true면 전부 따뜻한 노란색으로
+  glow: 2.2, // 전구 밝기
+  twinkleSpeed: 1.2, // 깜빡임 속도 (0이면 깜빡임 없음)
+  twinkleAmount: 0.45, // 깜빡임 세기 (0~1)
 };
 
 export const NETWORK = {

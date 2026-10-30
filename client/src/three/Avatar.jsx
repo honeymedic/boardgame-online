@@ -53,12 +53,18 @@ export default function Avatar({ seat, avatar, lookRef, nickname, connected = tr
           <sphereGeometry args={[AVATAR.headRadius, 24, 16]} />
           <meshStandardMaterial color={avatar.head} transparent opacity={opacity} />
         </mesh>
-        {/* 눈: 얼굴 앞면(-Z) */}
+        {/* 눈: 얼굴 앞면(-Z). 흰자 위에 눈동자를 올려서 얼굴색이 어두워도 보이게 한다 */}
         {[-1, 1].map((s) => (
-          <mesh key={s} position={[s * AVATAR.headRadius * 0.38, AVATAR.headRadius * 0.15, -AVATAR.headRadius * 0.88]}>
-            <sphereGeometry args={[AVATAR.eyeRadius, 12, 8]} />
-            <meshStandardMaterial color={AVATAR.eyeColor} />
-          </mesh>
+          <group key={s} position={[s * AVATAR.headRadius * 0.38, AVATAR.headRadius * 0.15, -AVATAR.headRadius * 0.86]}>
+            <mesh>
+              <sphereGeometry args={[AVATAR.eyeRadius * 1.9, 14, 10]} />
+              <meshStandardMaterial color={AVATAR.eyeWhiteColor} roughness={0.3} />
+            </mesh>
+            <mesh position={[0, 0, -AVATAR.eyeRadius * 1.3]}>
+              <sphereGeometry args={[AVATAR.eyeRadius, 12, 8]} />
+              <meshStandardMaterial color={AVATAR.eyeColor} roughness={0.2} />
+            </mesh>
+          </group>
         ))}
       </group>
 
