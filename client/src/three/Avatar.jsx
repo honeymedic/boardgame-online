@@ -3,7 +3,7 @@ import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
 import { AVATAR, SEAT, HAND } from "./config.js";
-import { Arm } from "./Hands.jsx";
+import { Arm, swingPose } from "./Hands.jsx";
 
 /**
  * 단순 기하 도형 아바타. 몸통(캡슐) + 머리(구) + 눈 2개.
@@ -34,8 +34,9 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
       const p = (performance.now() - h.swing.start) / (HAND.swingDuration * 1000);
       tmpV.copy(h.swing.target);
       g.worldToLocal(tmpV);
-      // 현재 손 위치에서 목표로 갔다가 돌아오는 궤적
-      rightTarget.lerp(tmpV, Math.sin(p * Math.PI) * 0.9 + 0.1);
+      // 휘두르기 시작 시점의 손 위치를 기억해 두고, 거기서 당겼다가 내지르고 돌아온다
+      if (!h.swing.fromLocal) h.swing.fromLocal = rightTarget.clone();
+      swingPose(p, h.swing.fromLocal, tmpV, rightShoulder, rightTarget);
     } else if (h?.pos) {
       tmpV.copy(h.pos);
       g.worldToLocal(tmpV);

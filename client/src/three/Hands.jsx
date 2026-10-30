@@ -7,6 +7,31 @@ import { Card3D } from "./Props3D.jsx";
 
 const UP = new THREE.Vector3(0, 1, 0);
 
+/**
+ * 휘두르기 궤적. p(0~1)에 따라 out에 손 위치를 써 준다.
+ *  0~0.3   : 어깨 쪽으로 당기며 들어 올림 (예비 동작)
+ *  0.3~0.6 : 목표를 지나칠 만큼 세게 내지름
+ *  0.6~1   : 원래 자리로 복귀
+ */
+export function swingPose(p, from, to, shoulder, out) {
+  const windup = _w.copy(shoulder).addScaledVector(_d.subVectors(from, shoulder), 0.45);
+  windup.y += HAND.swingWindupLift;
+  if (p < 0.3) {
+    const t = easeOut(p / 0.3);
+    return out.lerpVectors(from, windup, t);
+  }
+  if (p < 0.6) {
+    const t = easeOut((p - 0.3) / 0.3);
+    return out.lerpVectors(windup, to, t);
+  }
+  const t = easeInOut((p - 0.6) / 0.4);
+  return out.lerpVectors(to, from, t);
+}
+const _w = new THREE.Vector3();
+const _d = new THREE.Vector3();
+const easeOut = (t) => 1 - Math.pow(1 - t, 3);
+const easeInOut = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
 /** 두 점(Vector3, 매 프레임 바뀜) 사이를 잇는 원기둥 뼈대. */
 function Bone({ a, b, radius, color }) {
   const ref = useRef();
@@ -101,7 +126,7 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
  *  - 왼손: 카드를 들었으면(holdIndex) 카드 위치로
  *  - 손 위치와 동작을 서버로 보낸다
  */
-export function MyHands({ holdIndex, onSendHand, onSendGesture, avatar }) {
+export function MyHands({ holdIndex, onPutDown, onSendHand, onSendGesture, avatar }) {
   const { camera, gl } = useThree();
   const rightShoulder = useMemo(() => new THREE.Vector3(), []);
   const leftShoulder = useMemo(() => new THREE.Vector3(), []);
@@ -126,6 +151,11 @@ export function MyHands({ holdIndex, onSendHand, onSendGesture, avatar }) {
     const el = gl.domElement;
     const onClick = (e) => {
       if (e.button !== 0) return;
+      // 카드를 들고 있으면 어디를 클릭하든 내려놓는다 (든 카드는 조준점 밖에 있어서 다시 맞추기 어렵다)
+      if (holdIndex != null) {
+        onPutDown?.();
+        return;
+      }
       if (crosshair.object?.userData?.onInteract) {
         crosshair.object.userData.onInteract();
         return;
@@ -134,13 +164,13 @@ export function MyHands({ holdIndex, onSendHand, onSendGesture, avatar }) {
       const to = aim.clone();
       tmp.v.subVectors(to, rightShoulder).normalize();
       to.addScaledVector(tmp.v, HAND.swingOvershoot);
-      to.y -= 0.05;
+      to.y -= HAND.swingDrop;
       swing.current = { start: performance.now(), from, to };
       onSendGesture?.({ type: "swing", target: [to.x, to.y, to.z] });
     };
     el.addEventListener("click", onClick);
     return () => el.removeEventListener("click", onClick);
-  }, [gl]);
+  }, [gl, holdIndex, onPutDown]);
 
   useFrame(() => {
     // 어깨: 카메라 기준 고정 오프셋 → 세계 좌표
@@ -173,7 +203,7 @@ export function MyHands({ holdIndex, onSendHand, onSendGesture, avatar }) {
     if (sw) {
       const p = (performance.now() - sw.start) / (HAND.swingDuration * 1000);
       if (p >= 1) swing.current = null;
-      else rightTarget.lerpVectors(sw.from, sw.to, Math.sin(p * Math.PI));
+      else swingPose(p, sw.from, sw.to, rightShoulder, rightTarget);
     }
     if (!swing.current) rightTarget.copy(aim);
 

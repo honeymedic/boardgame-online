@@ -126,7 +126,9 @@ export const HAND = {
   // 왼손으로 카드를 들었을 때 카드 위치 (카메라 기준: 왼쪽, 아래, 앞)
   cardHoldOffset: [-0.17, -0.1, -0.4],
   hoverHeight: 0.05, // 손이 테이블 위를 떠다니는 높이
-  smoothing: 14, // 손이 목표를 따라가는 속도
-  swingDuration: 0.38, // 휘두르기 동작 시간 (초)
-  swingOvershoot: 0.18, // 휘두를 때 목표보다 더 뻗는 거리
+  smoothing: 24, // 손이 목표를 따라가는 속도 (클수록 즉각적)
+  swingDuration: 0.55, // 휘두르기 동작 시간 (초)
+  swingOvershoot: 0.5, // 휘두를 때 목표보다 더 뻗는 거리
+  swingDrop: 0.12, // 내지를 때 아래로 내리치는 정도
+  swingWindupLift: 0.14, // 예비 동작에서 손을 들어 올리는 높이
 };

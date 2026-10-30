@@ -90,7 +90,7 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
     <Canvas shadows camera={{ fov: 60, near: 0.05, far: 50 }} style={{ background: ROOM.floorColor }}>
       <PointerInstaller />
       <FirstPersonLook eye={eyePosition(mySeat)} baseYaw={mySeat.yaw} onLook={sendLook} />
-      <MyHands holdIndex={myHold} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
+      <MyHands holdIndex={myHold} onPutDown={() => setMyHold(null)} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
 
       <ambientLight intensity={ROOM.ambient} />
       <pointLight

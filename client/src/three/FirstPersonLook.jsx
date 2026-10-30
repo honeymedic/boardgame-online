@@ -32,7 +32,15 @@ export default function FirstPersonLook({ eye, baseYaw, onLook }) {
     // 마우스: 클릭하면 잠금 요청. 잠긴 동안은 movementX/Y로 회전
     const requestLock = (e) => {
       if (e.pointerType === "touch") return;
-      if (document.pointerLockElement !== el) el.requestPointerLock?.();
+      if (document.pointerLockElement !== el) {
+        // 일부 환경(내장 브라우저 등)은 잠금을 거부한다. 그래도 클릭 동작은 되므로 조용히 넘긴다
+        try {
+          const p = el.requestPointerLock?.();
+          if (p && typeof p.catch === "function") p.catch(() => {});
+        } catch {
+          /* ignore */
+        }
+      }
     };
     const mouseMove = (e) => {
       if (document.pointerLockElement !== el) return;
