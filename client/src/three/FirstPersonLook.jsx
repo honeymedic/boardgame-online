@@ -16,6 +16,7 @@ export default function FirstPersonLook({ eye, baseYaw, onLook }) {
   const { camera, gl } = useThree();
   const state = useRef({ yaw: baseYaw, pitch: -0.15, dragging: false, moved: 0, lastX: 0, lastY: 0, keys: new Set() });
   const lastSent = useRef({ t: 0, yaw: NaN, pitch: NaN });
+  if (import.meta.env.DEV) window.__look = state.current; // 개발 중 콘솔에서 시점 제어용
 
   useEffect(() => {
     camera.position.set(...eye);

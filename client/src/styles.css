@@ -413,3 +413,4 @@ button.danger { border-color: var(--error); color: var(--error); }
 .crosshair.idle { opacity: 0.35; }
 .table-view:fullscreen { background: var(--bg); }
 .table-overlay.top .row { pointer-events: auto; gap: 6px; }
+.build-tag { font-size: 11px; opacity: 0.6; align-self: center; margin-right: 6px; }
