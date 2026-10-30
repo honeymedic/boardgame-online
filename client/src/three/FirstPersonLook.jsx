@@ -71,7 +71,11 @@ export default function FirstPersonLook({ eye, baseYaw, onLook }) {
 
     const now = performance.now();
     const l = lastSent.current;
-    if (now - l.t >= NETWORK.lookSendInterval && (Math.abs(l.yaw - s.yaw) > 0.002 || Math.abs(l.pitch - s.pitch) > 0.002)) {
+    const changed =
+      !Number.isFinite(l.yaw) || Math.abs(l.yaw - s.yaw) > 0.002 || Math.abs(l.pitch - s.pitch) > 0.002;
+    // 바뀌었으면 간격마다 전송. 안 바뀌어도 가끔(keepalive) 보내서 새로 들어온 사람이 현재 방향을 받게 한다.
+    const keepalive = now - l.t >= NETWORK.lookKeepalive;
+    if ((changed && now - l.t >= NETWORK.lookSendInterval) || keepalive) {
       l.t = now;
       l.yaw = s.yaw;
       l.pitch = s.pitch;

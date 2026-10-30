@@ -61,4 +61,5 @@ export const ROOM = {
 
 export const NETWORK = {
   lookSendInterval: 100, // 시선 전송 간격 (ms)
+  lookKeepalive: 2000, // 움직임이 없어도 이 간격마다 한 번씩 전송 (ms)
 };

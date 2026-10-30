@@ -24,6 +24,7 @@ export default function App() {
             sessionStorage.removeItem("roomCode");
             setRoom(null);
             setGame(null);
+            setPreview(false);
           });
       }
     };
@@ -58,6 +59,7 @@ export default function App() {
     sessionStorage.removeItem("roomCode");
     setRoom(null);
     setGame(null);
+    setPreview(false);
   };
 
   let screen;
