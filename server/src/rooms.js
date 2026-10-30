@@ -1,0 +1,135 @@
+// 방(Room) 관리.
+// 게임 종류와 무관한 부분만 다룬다: 방 만들기, 코드로 입장, 나가기, 시작.
+// 실제 게임 규칙은 나중에 games/ 폴더에 게임별로 들어간다.
+
+import { createGame } from "./games/coup/game.js";
+
+const CODE_CHARS ="ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // 헷갈리는 0/O, 1/I 제외
+const MIN_PLAYERS = 2;
+const MAX_PLAYERS = 6;
+
+export class RoomManager {
+  constructor() {
+    /** @type {Map<string, Room>} 코드 → 방 */
+    this.rooms = new Map();
+  }
+
+  generateCode() {
+    let code;
+    do {
+      code = "";
+      for (let i = 0; i < 4; i++) {
+        code += CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)];
+      }
+    } while (this.rooms.has(code));
+    return code;
+  }
+
+  create({ playerId, nickname }) {
+    const code = this.generateCode();
+    const room = {
+      code,
+      hostId: playerId,
+      status: "lobby", // "lobby" | "playing"
+      players: [],
+      game: null,
+      createdAt: Date.now(),
+    };
+    this.rooms.set(code, room);
+    this.addPlayer(room, { playerId, nickname });
+    return room;
+  }
+
+  join({ code, playerId, nickname }) {
+    const room = this.rooms.get(code.toUpperCase());
+    if (!room) throw new Error("존재하지 않는 방 코드입니다.");
+
+    // 이미 이 방에 있던 사람이 다시 들어오는 경우 (새로고침, 재접속)
+    const existing = room.players.find((p) => p.id === playerId);
+    if (existing) {
+      existing.connected = true;
+      if (nickname) existing.nickname = nickname;
+      return room;
+    }
+
+    if (room.status !== "lobby") throw new Error("이미 게임이 시작된 방입니다.");
+    if (room.players.length >= MAX_PLAYERS) throw new Error("방이 가득 찼습니다.");
+
+    this.addPlayer(room, { playerId, nickname });
+    return room;
+  }
+
+  addPlayer(room, { playerId, nickname }) {
+    room.players.push({
+      id: playerId,
+      nickname: nickname?.trim() || `플레이어${room.players.length + 1}`,
+      connected: true,
+    });
+  }
+
+  /** 연결이 끊긴 경우: 바로 제거하지 않고 표시만 한다 (재접속 허용). */
+  markDisconnected(code, playerId) {
+    const room = this.rooms.get(code);
+    if (!room) return null;
+    const player = room.players.find((p) => p.id === playerId);
+    if (player) player.connected = false;
+    return room;
+  }
+
+  /** 명시적으로 나가기를 누른 경우: 실제로 제거한다. */
+  leave(code, playerId) {
+    const room = this.rooms.get(code);
+    if (!room) return null;
+
+    room.players = room.players.filter((p) => p.id !== playerId);
+
+    if (room.players.length === 0) {
+      this.rooms.delete(code);
+      return null;
+    }
+    // 방장이 나갔으면 남은 첫 번째 사람에게 방장을 넘긴다
+    if (room.hostId === playerId) {
+      room.hostId = room.players[0].id;
+    }
+    return room;
+  }
+
+  start(code, playerId) {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error("방을 찾을 수 없습니다.");
+    if (room.hostId !== playerId) throw new Error("방장만 시작할 수 있습니다.");
+    if (room.status !== "lobby") throw new Error("이미 시작된 게임입니다.");
+    if (room.players.length < MIN_PLAYERS) {
+      throw new Error(`최소 ${MIN_PLAYERS}명이 필요합니다.`);
+    }
+    room.status = "playing";
+    room.game = createGame(room.players);
+    return room;
+  }
+
+  /** 게임을 끝내고 로비로 돌아간다. 방장만 가능. */
+  reset(code, playerId) {
+    const room = this.rooms.get(code);
+    if (!room) throw new Error("방을 찾을 수 없습니다.");
+    if (room.hostId !== playerId) throw new Error("방장만 로비로 돌아갈 수 있습니다.");
+    room.status = "lobby";
+    room.game = null;
+    return room;
+  }
+
+  /** 클라이언트에 보내도 되는 공개 정보만 추린다. */
+  toPublic(room) {
+    return {
+      code: room.code,
+      hostId: room.hostId,
+      status: room.status,
+      players: room.players.map((p) => ({
+        id: p.id,
+        nickname: p.nickname,
+        connected: p.connected,
+      })),
+      minPlayers: MIN_PLAYERS,
+      maxPlayers: MAX_PLAYERS,
+    };
+  }
+}
