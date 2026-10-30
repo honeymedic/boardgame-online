@@ -25,16 +25,22 @@ export default function FirstPersonLook({ eye, baseYaw, onLook }) {
     const s = state.current;
     const down = (e) => {
       s.dragging = true;
+      s.moved = 0;
       s.lastX = e.clientX;
       s.lastY = e.clientY;
       el.setPointerCapture?.(e.pointerId);
     };
     const move = (e) => {
       if (!s.dragging) return;
-      s.yaw -= (e.clientX - s.lastX) * CAMERA.dragSensitivity;
-      s.pitch -= (e.clientY - s.lastY) * CAMERA.dragSensitivity;
+      const dx = e.clientX - s.lastX;
+      const dy = e.clientY - s.lastY;
       s.lastX = e.clientX;
       s.lastY = e.clientY;
+      // 클릭(카드 집기 등)을 드래그로 오인하지 않도록, 조금 움직이기 전까지는 회전하지 않는다
+      s.moved += Math.abs(dx) + Math.abs(dy);
+      if (s.moved < CAMERA.dragDeadzone) return;
+      s.yaw -= dx * CAMERA.dragSensitivity;
+      s.pitch -= dy * CAMERA.dragSensitivity;
     };
     const up = () => (s.dragging = false);
     const keyDown = (e) => s.keys.add(e.key);

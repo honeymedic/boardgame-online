@@ -6,6 +6,7 @@ import Avatar from "./Avatar.jsx";
 import FirstPersonLook from "./FirstPersonLook.jsx";
 import StringLights from "./StringLights.jsx";
 import { Card3D, Deck3D, Coin3D } from "./Props3D.jsx";
+import HandCard from "./HandCard.jsx";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { STRING_LIGHTS } from "./config.js";
 import { socket, playerId } from "../socket.js";
@@ -81,7 +82,7 @@ export default function TableScene({ players, bubbles = {}, highlightId = null }
               bubble={bubbles[p.id]}
             />
           )}
-          <SeatProps seat={seats[i]} coins={2} />
+          <SeatProps seat={seats[i]} coins={2} mine={i === myIndex} hand={i === myIndex ? sampleHand(p.id) : null} />
         </group>
       ))}
 
@@ -158,15 +159,30 @@ function Deck() {
   return <Deck3D cards={11} />;
 }
 
-/** 자리 앞에 놓인 뒷면 카드 2장과 동전. */
-function SeatProps({ seat, coins }) {
+// 게임이 연결되기 전까지 내 자리에 보여줄 임시 손패. 플레이어 ID로 정해져서 새로고침해도 같다.
+const SAMPLE_CHARACTERS = ["duke", "assassin", "captain", "ambassador", "contessa"];
+function sampleHand(id) {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  const a = h % 5;
+  const b = (a + 1 + ((h >> 3) % 4)) % 5;
+  return [SAMPLE_CHARACTERS[a], SAMPLE_CHARACTERS[b]];
+}
+
+/** 자리 앞에 놓인 카드 2장과 동전. 내 자리(mine)면 카드를 클릭해 집어 들 수 있다. */
+function SeatProps({ seat, coins, mine = false, hand = null }) {
   const spot = tableSpotFor(seat, PROPS.cardDistanceFromEdge);
   const yaw = seat.yaw;
   return (
     <group position={spot} rotation={[0, yaw, 0]}>
-      {[-1, 1].map((s) => (
-        <Card3D key={s} position={[s * (PROPS.cardWidth / 2 + PROPS.cardGap / 2), PROPS.cardThickness / 2, 0]} />
-      ))}
+      {[-1, 1].map((s, idx) => {
+        const pos = [s * (PROPS.cardWidth / 2 + PROPS.cardGap / 2), PROPS.cardThickness / 2, 0];
+        return mine ? (
+          <HandCard key={s} restPosition={pos} character={hand?.[idx] ?? null} />
+        ) : (
+          <Card3D key={s} position={pos} />
+        );
+      })}
       {Array.from({ length: coins }).map((_, i) => (
         <Coin3D key={i} position={[PROPS.cardWidth + 0.08, PROPS.coinThickness * (i + 0.5), 0.02]} rotation={[0, i * 0.7, 0]} />
       ))}

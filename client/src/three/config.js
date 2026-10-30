@@ -24,6 +24,7 @@ export const CAMERA = {
   pitchMax: 0.4, // 위로 올려다보는 한계
   yawLimit: 1.9, // 정면 기준 좌우로 돌릴 수 있는 한계 (라디안, 약 110도)
   dragSensitivity: 0.0045, // 마우스 드래그 감도
+  dragDeadzone: 6, // 이만큼(px) 움직이기 전까지는 클릭으로 보고 시점을 돌리지 않음
   keySpeed: 1.6, // 방향키 회전 속도 (라디안/초)
 };
 
@@ -96,4 +97,13 @@ export const STRING_LIGHTS = {
 export const NETWORK = {
   lookSendInterval: 100, // 시선 전송 간격 (ms)
   lookKeepalive: 2000, // 움직임이 없어도 이 간격마다 한 번씩 전송 (ms)
+};
+
+// 내 카드 집어 들기
+export const PICKUP = {
+  distance: 0.42, // 눈에서 카드까지 거리 (m). 작을수록 크게 보임
+  drop: 0.1, // 시선보다 아래로 내리는 정도
+  speed: 9, // 들어 올리고 내려놓는 속도. 클수록 빠름
+  hoverLift: 0.015, // 마우스를 올렸을 때 살짝 뜨는 높이
+  liftBrightness: 0.55, // 들어 올린 카드 밝기 보정 (0이면 보정 없음)
 };
