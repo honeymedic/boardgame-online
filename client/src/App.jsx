@@ -33,7 +33,11 @@ export default function App() {
     };
     const onDisconnect = () => setConnected(false);
     const onRoomUpdate = (r) => {
-      setRoom(r);
+      setRoom((prev) => {
+        // 게임이 시작되는 순간 3D 테이블을 기본 화면으로 연다
+        if (prev?.status !== "playing" && r.status === "playing") setPreview(true);
+        return r;
+      });
       if (r.status === "lobby") setGame(null);
     };
     const onGameUpdate = (g) => setGame(g);

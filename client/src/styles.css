@@ -435,3 +435,9 @@ button.danger { border-color: var(--error); color: var(--error); }
   border-radius: 12px; padding: 12px 18px; display: flex; flex-direction: column; gap: 4px; align-items: center;
   font-size: 15px; animation: pop .15s ease-out;
 }
+.game-overlay.quiet { width: auto; max-width: 480px; }
+.game-overlay.quiet .status { font-size: 13px; padding: 6px 14px; opacity: 0.8; background: rgba(38, 41, 51, 0.8); }
+.game-overlay.active { animation: rise .22s ease-out; }
+.game-overlay.active .status { border-color: var(--accent); }
+.overlay-hint { margin: -2px 0 0; font-size: 12px; text-align: center; }
+@keyframes rise { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

@@ -90,7 +90,7 @@ export default function Table({ room, game = null, chat, bubbles, onBack }) {
         </div>
       </div>
 
-      {game && <GameOverlay game={game} />}
+      {game && <GameOverlay game={game} locked={locked} />}
 
       <div className="table-overlay bottom-right">
         <ChatPanel messages={chat} compact />
@@ -100,9 +100,14 @@ export default function Table({ room, game = null, chat, bubbles, onBack }) {
 }
 
 /** 게임 중 3D 위에 얹는 상태줄 + 행동 패널. 버튼을 누르려면 Esc로 마우스를 풀어야 한다. */
-function GameOverlay({ game }) {
+function GameOverlay({ game, locked }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // 내 입력이 필요해지면 마우스를 풀어 바로 버튼을 누를 수 있게 한다
+  useEffect(() => {
+    if (game.options && document.pointerLockElement) document.exitPointerLock();
+  }, [game.options?.kind, game.phase]);
   const me = game.players.find((p) => p.id === playerId);
   const nameOf = (id) => game.players.find((p) => p.id === id)?.nickname ?? "?";
 
@@ -133,11 +138,15 @@ function GameOverlay({ game }) {
       </div>
     ) : null;
 
+  // 내 입력이 필요할 때(내 차례, 도전/막기 응답, 카드 잃기, 교환)만 패널을 올리고, 평소엔 한 줄 상태만 작게
+  const needsInput = !!game.options || game.phase === "game_over";
+
   return (
     <div className="table-overlay bottom-center">
-      <div className="game-overlay">
+      <div className={`game-overlay ${needsInput ? "active" : "quiet"}`}>
         <StatusBar game={game} nameOf={nameOf} />
-        {loseButtons ?? <ActionPanel game={game} me={me} nameOf={nameOf} send={send} busy={busy} />}
+        {needsInput && (loseButtons ?? <ActionPanel game={game} me={me} nameOf={nameOf} send={send} busy={busy} />)}
+        {needsInput && !locked && <p className="muted overlay-hint">버튼을 누르려면 Esc로 마우스를 풀고, 다시 화면을 클릭하면 돌아옵니다</p>}
         {error && <p className="error">{error}</p>}
       </div>
     </div>
