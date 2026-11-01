@@ -147,3 +147,29 @@ export const COINS = {
   flightStagger: 0.09, // 여러 개 날아갈 때 간격 (초)
   handCoinOffset: [0, 0.03, 0], // 손에 쥔 동전의 손 기준 위치
 };
+
+// 능력 사용 연출 (머리 위 문장, 입자, 빛줄기, 방패, 도전)
+export const EFFECTS = {
+  emblemHeight: 0.42, // 머리 위로 띄우는 높이
+  emblemSize: 0.34, // 문장 크기 (한 변)
+  emblemDuration: 2.6, // 문장이 떠 있는 시간 (초)
+  ringMaxRadius: 0.55, // 퍼지는 빛 고리 최대 반지름
+  particleCount: 32, // 입자 수
+  particleSize: 0.045, // 입자 크기
+  particleRise: 0.9, // 입자가 올라가는 속도 (m/s)
+  beamDuration: 0.5, // 대상에게 뻗는 빛줄기 시간
+  beamRadius: 0.025,
+  shieldDuration: 1.6, // 방패 유지 시간
+  shieldRadius: 0.32,
+  exclaimDuration: 0.9, // 도전 느낌표 시간
+  verdictDuration: 1.4, // 확정/깨짐 연출 시간
+  selfOffset: [0, 0.52, -1.0], // 내가 쓸 때 시야 안에 띄우는 위치 (카메라 기준). 정면 상대와 겹치지 않게 위쪽
+  selfScale: 0.55, // 내 시야 연출의 크기 비율
+  colors: {
+    coin: "#e2b53d", // 수입/해외 원조
+    coup: "#ff3b3b", // 쿠
+    challenge: "#ff3b3b", // 도전 느낌표
+    confirm: "#ffd166", // 주장이 진짜였을 때 (금빛)
+    broken: "#8a8a99", // 주장이 거짓이었을 때
+  },
+};

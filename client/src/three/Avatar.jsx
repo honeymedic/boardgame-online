@@ -141,7 +141,7 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
   );
 }
 
-const SEAT_HEIGHT = 0.45;
+export const SEAT_HEIGHT = 0.45;
 
 function normalizeAngle(a) {
   while (a > Math.PI) a -= Math.PI * 2;

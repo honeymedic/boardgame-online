@@ -11,6 +11,10 @@ import { Card3D, Deck3D } from "./Props3D.jsx";
 import HandCard from "./HandCard.jsx";
 import { MyHands } from "./Hands.jsx";
 import { CoinPile, CoinFlights, TABLE_TOP } from "./Coins.jsx";
+import { Emblem, Beam, Shield, SelfAnchor, symbolFor } from "./Effects.jsx";
+import { effectsFromGame } from "./effectsFromGame.js";
+import { SEAT_HEIGHT } from "./Avatar.jsx";
+import { AVATAR, EFFECTS } from "./config.js";
 import { installPointer } from "./input.js";
 import { socket, playerId } from "../socket.js";
 
@@ -170,6 +174,56 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
   }, [game]);
   const removeFlight = (id) => setFlights((f) => f.filter((x) => x.id !== id));
 
+  // ── 능력 사용 연출: 게임 뷰 전후의 로그를 비교해서 이벤트를 뽑고, 자리 위치에 연출을 띄운다 ──
+  const [effects, setEffects] = useState([]);
+  const prevGame = useRef(null);
+  const effectId = useRef(0);
+  useEffect(() => {
+    const prev = prevGame.current;
+    prevGame.current = game;
+    if (!game || !prev) return;
+    const events = effectsFromGame(prev, game, seatPlayers);
+    if (events.length === 0) return;
+    const now = performance.now();
+    const seatOf = (id) => seatPlayers.findIndex((p) => p.id === id);
+    const list = [];
+    const add = (e) => list.push({ id: effectId.current++, start: now, ...e });
+    for (const ev of events) {
+      const si = seatOf(ev.playerId);
+      if (si < 0) continue;
+      const isMe = ev.playerId === playerId;
+      if (ev.type === "claim") {
+        const { symbol, color } = symbolFor(ev.action, ev.character);
+        add({ kind: "emblem", position: headTopWorld(seats[si]), symbol, color, self: isMe });
+        if (ev.targetId != null) {
+          const ti = seatOf(ev.targetId);
+          if (ti >= 0) add({ kind: "beam", from: chestWorld(seats[si]), to: chestWorld(seats[ti]), color, start: now + 350 });
+        }
+      } else if (ev.type === "block") {
+        const { color } = symbolFor(null, ev.character);
+        add({ kind: "shield", position: shieldWorld(seats[si]), yaw: seats[si].yaw, color });
+        const { symbol } = symbolFor(null, ev.character);
+        add({ kind: "emblem", position: headTopWorld(seats[si]), symbol, color, self: isMe, duration: EFFECTS.shieldDuration });
+      } else if (ev.type === "challenge") {
+        add({ kind: "emblem", position: headTopWorld(seats[si]), symbol: "exclaim", color: EFFECTS.colors.challenge, duration: EFFECTS.exclaimDuration, scale: 0.8, self: isMe });
+      } else if (ev.type === "verdict") {
+        const { symbol, color } = symbolFor(null, ev.character);
+        add({
+          kind: "emblem",
+          position: headTopWorld(seats[si]),
+          symbol: ev.success ? "check" : symbol,
+          color,
+          verdict: ev.success ? "confirm" : "broken",
+          duration: EFFECTS.verdictDuration,
+          self: isMe,
+          start: now + 200,
+        });
+      }
+    }
+    setEffects((f) => [...f, ...list]);
+  }, [game]);
+  const removeEffect = (id) => setEffects((f) => f.filter((x) => x.id !== id));
+
   const sendLook = (look) => socket.emit("look", look);
   const sendHand = (h) => socket.emit("hand", h);
   const sendGesture = (g) => socket.emit("gesture", g);
@@ -203,6 +257,27 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
       {/* 은행 동전 더미 (덱 옆) */}
       <CoinPile position={bankWorld} count={bankCount} />
       <CoinFlights flights={flights} onDone={removeFlight} />
+
+      {/* 능력 연출: 상대 머리 위(세계 좌표) */}
+      {effects
+        .filter((e) => !e.self)
+        .map((e) =>
+          e.kind === "emblem" ? (
+            <Emblem key={e.id} position={e.position} symbol={e.symbol} color={e.color} start={e.start} duration={e.duration} scale={e.scale} verdict={e.verdict} onDone={() => removeEffect(e.id)} />
+          ) : e.kind === "beam" ? (
+            <Beam key={e.id} from={e.from} to={e.to} color={e.color} start={e.start} onDone={() => removeEffect(e.id)} />
+          ) : e.kind === "shield" ? (
+            <Shield key={e.id} position={e.position} yaw={e.yaw} color={e.color} start={e.start} onDone={() => removeEffect(e.id)} />
+          ) : null
+        )}
+      {/* 내가 쓴 능력: 시야 위쪽에 작게 */}
+      <SelfAnchor>
+        {effects
+          .filter((e) => e.self && e.kind === "emblem")
+          .map((e) => (
+            <Emblem key={e.id} position={[0, 0, 0]} symbol={e.symbol} color={e.color} start={e.start} duration={e.duration} scale={(e.scale ?? 1) * EFFECTS.selfScale} verdict={e.verdict} depthTest={false} onDone={() => removeEffect(e.id)} />
+          ))}
+      </SelfAnchor>
 
       {seatPlayers.map((p, i) => (
         <group key={p.id}>
@@ -248,6 +323,24 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
 
 /** 자리의 동전 더미 위치 (카드 오른쪽) — 자리 그룹 로컬 좌표. SeatProps와 coinPileWorld가 같은 값을 쓴다. */
 const PILE_LOCAL = [PROPS.cardWidth + 0.12, 0, 0.02];
+
+/** 자리에 앉은 아바타의 머리 위(문장 띄울 자리) 세계 좌표 */
+function headTopWorld(seat) {
+  const [x, , z] = seat.position;
+  return [x, SEAT_HEIGHT + AVATAR.bodyHeight + AVATAR.headRadius * 1.9 + EFFECTS.emblemHeight, z];
+}
+/** 아바타 가슴 높이 세계 좌표 (빛줄기 시작/끝) */
+function chestWorld(seat) {
+  const [x, , z] = seat.position;
+  return [x, SEAT_HEIGHT + 0.5, z];
+}
+/** 아바타 앞쪽(방패 자리) 세계 좌표. 아바타는 yaw 방향(-Z 기준)으로 테이블 중앙을 본다 */
+function shieldWorld(seat) {
+  const [x, , z] = seat.position;
+  const fx = -Math.sin(seat.yaw);
+  const fz = -Math.cos(seat.yaw);
+  return [x + fx * 0.45, SEAT_HEIGHT + 0.55, z + fz * 0.45];
+}
 
 /** 자리의 동전 더미 세계 좌표 */
 function coinPileWorld(seat) {
