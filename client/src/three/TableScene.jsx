@@ -194,16 +194,15 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
       const isMe = ev.playerId === playerId;
       if (ev.type === "claim") {
         const { symbol, color } = symbolFor(ev.action, ev.character);
-        add({ kind: "emblem", position: headTopWorld(seats[si]), symbol, color, self: isMe });
+        // 반응 단계가 있는 행동은 pending 동안 유지되는 오라(아래 pendingEffects)가 맡는다. 바로 해결되는 행동(수입, 쿠)만 일회성
+        const stillPending = game.pending?.action?.actorId === ev.playerId;
+        if (!stillPending) add({ kind: "emblem", position: headTopWorld(seats[si]), symbol, color, self: isMe });
         if (ev.targetId != null) {
           const ti = seatOf(ev.targetId);
           if (ti >= 0) add({ kind: "beam", from: chestWorld(seats[si]), to: chestWorld(seats[ti]), color, start: now + 350 });
         }
       } else if (ev.type === "block") {
-        const { color } = symbolFor(null, ev.character);
-        add({ kind: "shield", position: shieldWorld(seats[si]), yaw: seats[si].yaw, color });
-        const { symbol } = symbolFor(null, ev.character);
-        add({ kind: "emblem", position: headTopWorld(seats[si]), symbol, color, self: isMe, duration: EFFECTS.shieldDuration });
+        // 막기 오라와 방패도 pending 동안 유지된다 (pendingEffects)
       } else if (ev.type === "challenge") {
         add({ kind: "emblem", position: headTopWorld(seats[si]), symbol: "exclaim", color: EFFECTS.colors.challenge, duration: EFFECTS.exclaimDuration, scale: 0.8, self: isMe });
       } else if (ev.type === "verdict") {
@@ -211,7 +210,7 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
         add({
           kind: "emblem",
           position: headTopWorld(seats[si]),
-          symbol: ev.success ? "check" : symbol,
+          symbol, // 확정이든 깨짐이든 주장했던 상징 그대로 (확정은 금빛으로 번쩍, 깨짐은 회색으로 부서짐)
           color,
           verdict: ev.success ? "confirm" : "broken",
           duration: EFFECTS.verdictDuration,
@@ -223,6 +222,42 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
     setEffects((f) => [...f, ...list]);
   }, [game]);
   const removeEffect = (id) => setEffects((f) => f.filter((x) => x.id !== id));
+
+  // ── 유지되는 오라: 지금 해결 중인 주장(행동/막기)이 있는 동안 계속 떠 있다. 해결되면(pending 사라지면) 함께 사라진다 ──
+  const holdStarts = useRef(new Map()); // key → 시작 시각 (뷰가 갱신돼도 애니메이션이 처음부터 다시 시작하지 않게)
+  const pendingEffects = useMemo(() => {
+    const pend = game?.pending;
+    if (!pend?.action) {
+      holdStarts.current.clear();
+      return [];
+    }
+    const list = [];
+    const seatOf = (id) => seatPlayers.findIndex((p) => p.id === id);
+    const startFor = (key) => {
+      if (!holdStarts.current.has(key)) holdStarts.current.set(key, performance.now());
+      return holdStarts.current.get(key);
+    };
+    const a = pend.action;
+    const ai = seatOf(a.actorId);
+    if (ai >= 0) {
+      const { symbol, color } = symbolFor(a.type, a.claim);
+      const key = `claim:${a.actorId}:${a.type}:${game.turnPlayerId}`;
+      list.push({ key, kind: "emblem", position: headTopWorld(seats[ai]), symbol, color, self: a.actorId === playerId, start: startFor(key) });
+    }
+    if (pend.block) {
+      const bi = seatOf(pend.block.blockerId);
+      if (bi >= 0) {
+        const { symbol, color } = symbolFor(null, pend.block.character);
+        const key = `block:${pend.block.blockerId}:${pend.block.character}:${game.turnPlayerId}`;
+        list.push({ key, kind: "emblem", position: headTopWorld(seats[bi]), symbol, color, self: pend.block.blockerId === playerId, start: startFor(key) });
+        // 내 방패는 카메라 바로 앞을 가리므로 그리지 않는다 (내 시야엔 위쪽 문장으로만)
+        if (pend.block.blockerId !== playerId) list.push({ key: key + ":shield", kind: "shield", position: shieldWorld(seats[bi]), yaw: seats[bi].yaw, color, start: startFor(key) });
+      }
+    }
+    // 더 이상 없는 키는 정리
+    for (const k of [...holdStarts.current.keys()]) if (!list.some((e) => e.key === k || e.key + ":shield" === k)) holdStarts.current.delete(k);
+    return list;
+  }, [game, seats, seatPlayers]);
 
   const sendLook = (look) => socket.emit("look", look);
   const sendHand = (h) => socket.emit("hand", h);
@@ -270,12 +305,27 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
             <Shield key={e.id} position={e.position} yaw={e.yaw} color={e.color} start={e.start} onDone={() => removeEffect(e.id)} />
           ) : null
         )}
-      {/* 내가 쓴 능력: 시야 위쪽에 작게 */}
+      {/* 해결될 때까지 유지되는 주장/막기 오라 (상대) */}
+      {pendingEffects
+        .filter((e) => !e.self)
+        .map((e) =>
+          e.kind === "emblem" ? (
+            <Emblem key={e.key} position={e.position} symbol={e.symbol} color={e.color} start={e.start} hold />
+          ) : (
+            <Shield key={e.key} position={e.position} yaw={e.yaw} color={e.color} start={e.start} hold />
+          )
+        )}
+      {/* 내가 쓴 능력: 시야 위쪽에 작게 (일회성 + 유지) */}
       <SelfAnchor>
         {effects
           .filter((e) => e.self && e.kind === "emblem")
           .map((e) => (
             <Emblem key={e.id} position={[0, 0, 0]} symbol={e.symbol} color={e.color} start={e.start} duration={e.duration} scale={(e.scale ?? 1) * EFFECTS.selfScale} verdict={e.verdict} depthTest={false} onDone={() => removeEffect(e.id)} />
+          ))}
+        {pendingEffects
+          .filter((e) => e.self && e.kind === "emblem")
+          .map((e) => (
+            <Emblem key={e.key} position={[0, 0, 0]} symbol={e.symbol} color={e.color} start={e.start} scale={EFFECTS.selfScale} depthTest={false} hold />
           ))}
       </SelfAnchor>
 
