@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5173,
     // 개발 중: 브라우저는 5173(Vite)에 접속하고, 소켓 통신만 3001(Node 서버)로 넘긴다.
     proxy: {
-      "/socket.io": { target: "http://localhost:3001", ws: true },
+      "/socket.io": { target: `http://localhost:${process.env.API_PORT || 3001}`, ws: true },
     },
   },
 });
