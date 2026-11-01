@@ -150,6 +150,17 @@ io.on("connection", (socket) => {
     socket.to(socket.data.code).emit("gesture", { playerId, type, target, ts: Date.now() });
   });
 
+  // 얼굴 표정 중계 (선택 기능). 값 7개를 0~1로 잘라서 같은 방 다른 사람에게만. 저장 안 함.
+  socket.on("face", (d) => {
+    if (!socket.data.code) return;
+    const out = {};
+    for (const k of ["bl", "br", "wl", "wr", "j", "s", "b"]) {
+      const v = Number(d?.[k]);
+      out[k] = Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0;
+    }
+    socket.to(socket.data.code).emit("face", { playerId, ...out, off: d?.off === true });
+  });
+
   // 시선(고개 방향) 중계. 게임 상태와 무관하고 저장하지 않는다. 같은 방 다른 사람에게만 그대로 전달.
   socket.on("look", (data) => {
     if (!socket.data.code) return;

@@ -441,3 +441,16 @@ button.danger { border-color: var(--error); color: var(--error); }
 .game-overlay.active .status { border-color: var(--accent); }
 .overlay-hint { margin: -2px 0 0; font-size: 12px; text-align: center; }
 @keyframes rise { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+
+/* 얼굴 연동 미리보기 (왼쪽 아래, 나만 보임) */
+.face-preview {
+  position: absolute; left: 14px; bottom: 14px;
+  width: 168px; padding: 6px;
+  background: rgba(20, 20, 28, 0.85); border: 1px solid var(--border); border-radius: 12px;
+  display: flex; flex-direction: column; gap: 4px; font-size: 11px;
+}
+.face-preview video { width: 100%; border-radius: 8px; transform: scaleX(-1); background: #000; aspect-ratio: 4 / 3; object-fit: cover; }
+.face-status { color: var(--muted); text-align: center; }
+.face-bars { display: flex; flex-direction: column; gap: 2px; }
+.face-bar { display: grid; grid-template-columns: 58px 1fr; align-items: center; gap: 4px; color: var(--muted); }
+.face-bar i { display: block; height: 5px; border-radius: 3px; background: var(--accent); }

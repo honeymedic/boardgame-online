@@ -60,6 +60,24 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
     return ref;
   };
 
+  // ── 다른 사람들의 표정 (얼굴 연동) ──
+  const faces = useRef(new Map());
+  const getFaceRef = (id) => {
+    let ref = faces.current.get(id);
+    if (!ref) {
+      ref = { current: null };
+      faces.current.set(id, ref);
+    }
+    return ref;
+  };
+  useEffect(() => {
+    const onFace = ({ playerId: id, ...f }) => {
+      getFaceRef(id).current = { ...f, t: performance.now() };
+    };
+    socket.on("face", onFace);
+    return () => socket.off("face", onFace);
+  }, []);
+
   useEffect(() => {
     const onLook = ({ playerId: id, yaw, pitch }) => {
       getLookRef(id).current = { yaw, pitch };
@@ -337,6 +355,7 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
               avatar={p.avatar}
               lookRef={getLookRef(p.id)}
               handRef={getHandRef(p.id)}
+              faceRef={getFaceRef(p.id)}
               nickname={p.nickname}
               connected={p.connected !== false}
               highlight={highlightId === p.id || turnId === p.id}

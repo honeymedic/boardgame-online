@@ -175,3 +175,19 @@ export const EFFECTS = {
     broken: "#8a8a99", // 주장이 거짓이었을 때
   },
 };
+
+// 얼굴 표정 연동 (선택 기능: 눈 깜빡임·눈 크기·눈썹·입)
+export const FACE = {
+  cameraWidth: 320, // 카메라 해상도 (낮을수록 가벼움)
+  cameraHeight: 240,
+  detectFps: 15, // 초당 인식 횟수 (낮을수록 가벼움)
+  sendInterval: 80, // 표정 전송 간격 (ms)
+  follow: 0.45, // 표정이 따라가는 속도 (0~1)
+  blinkFollow: 0.85, // 깜빡임이 따라가는 속도 (빠르게)
+  staleAfter: 1500, // 이 시간(ms) 동안 표정이 안 오면 자동 깜빡임으로 돌아감
+  idleBlinkMin: 2.5, // 자동 깜빡임 간격 (초)
+  idleBlinkMax: 5.5,
+  mouthColor: "#3a1a1f",
+  browColor: "#2a2422",
+  exaggerate: 1.3, // 표정 과장 정도 (1이면 그대로)
+};

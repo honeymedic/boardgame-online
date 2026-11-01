@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import TableScene from "../three/TableScene.jsx";
 import ChatPanel from "../components/ChatPanel.jsx";
 import { StatusBar, ActionPanel } from "./Game.jsx";
-import { playerId, request } from "../socket.js";
+import { playerId, request, socket } from "../socket.js";
+import { startFaceTracking } from "../three/face.js";
+import { FACE } from "../three/config.js";
 
 /**
  * 3D 테이블 화면. 로비에서는 미리보기, 게임 중에는 실제 게임 화면.
@@ -47,6 +49,48 @@ export default function Table({ room, game = null, chat, bubbles, onBack }) {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  // ── 얼굴 연동 (선택 기능) ──
+  const [faceOn, setFaceOn] = useState(false);
+  const [faceStatus, setFaceStatus] = useState(""); // loading | tracking | noface | error
+  const [faceValues, setFaceValues] = useState(null); // 미리보기 옆 막대용
+  const videoRef = useRef(null);
+  const stopFace = useRef(null);
+  const lastFaceSend = useRef(0);
+
+  const toggleFace = async () => {
+    if (faceOn) {
+      stopFace.current?.();
+      stopFace.current = null;
+      setFaceOn(false);
+      setFaceStatus("");
+      socket.emit("face", { off: true });
+      return;
+    }
+    setFaceOn(true);
+    setFaceStatus("loading");
+    try {
+      // 버튼을 누른 뒤 video 요소가 화면에 붙을 때까지 한 박자 기다린다
+      await new Promise((r) => setTimeout(r, 0));
+      stopFace.current = await startFaceTracking(videoRef.current, (f) => {
+        if (!f) {
+          setFaceStatus("noface");
+          return;
+        }
+        setFaceStatus("tracking");
+        setFaceValues(f);
+        const now = performance.now();
+        if (now - lastFaceSend.current >= FACE.sendInterval) {
+          lastFaceSend.current = now;
+          socket.emit("face", f);
+        }
+      });
+    } catch (e) {
+      console.error(e);
+      setFaceStatus("error");
+    }
+  };
+  useEffect(() => () => stopFace.current?.(), []);
+
   const toggleFullscreen = () => {
     if (document.fullscreenElement) document.exitFullscreen?.();
     else viewRef.current?.requestFullscreen?.().catch?.(() => {});
@@ -81,6 +125,9 @@ export default function Table({ room, game = null, chat, bubbles, onBack }) {
           <span className="muted build-tag" title="빌드 시각">
             {typeof __BUILD_TIME__ !== "undefined" ? __BUILD_TIME__ : ""}
           </span>
+          <button className={`small ${faceOn ? "primary" : ""}`} onClick={toggleFace} title="웹캠으로 내 표정(눈·눈썹·입)을 아바타에 반영. 영상은 밖으로 나가지 않음">
+            📷 {faceOn ? "얼굴 연동 끄기" : "얼굴 연동"}
+          </button>
           <button className="small" onClick={toggleFullscreen}>
             {fullscreen ? "전체화면 해제" : "전체화면"}
           </button>
@@ -91,6 +138,35 @@ export default function Table({ room, game = null, chat, bubbles, onBack }) {
       </div>
 
       {game && <GameOverlay game={game} locked={locked} />}
+
+      {/* 얼굴 연동 미리보기: 나만 보인다 */}
+      {faceOn && (
+        <div className="face-preview">
+          <video ref={videoRef} muted playsInline />
+          <div className="face-status">
+            {faceStatus === "loading" && "불러오는 중..."}
+            {faceStatus === "tracking" && "인식 중"}
+            {faceStatus === "noface" && "얼굴을 찾는 중"}
+            {faceStatus === "error" && "카메라를 쓸 수 없어요"}
+          </div>
+          {faceValues && faceStatus === "tracking" && (
+            <div className="face-bars">
+              {[
+                ["왼눈 감음", faceValues.bl],
+                ["오른눈 감음", faceValues.br],
+                ["입", faceValues.j],
+                ["미소", faceValues.s],
+                ["눈썹", faceValues.b],
+              ].map(([label, v]) => (
+                <div key={label} className="face-bar">
+                  <span>{label}</span>
+                  <i style={{ width: `${Math.round(v * 100)}%` }} />
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="table-overlay bottom-right">
         <ChatPanel messages={chat} compact />

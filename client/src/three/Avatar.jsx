@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Html } from "@react-three/drei";
 import * as THREE from "three";
-import { AVATAR, SEAT, HAND } from "./config.js";
+import { AVATAR, SEAT, HAND, FACE } from "./config.js";
 import { Arm, swingPose } from "./Hands.jsx";
 
 /**
@@ -13,7 +13,7 @@ import { Arm, swingPose } from "./Hands.jsx";
  *  lookRef   { current: { yaw, pitch } }  이 사람의 실제 시선(절대 각도). 없으면 정면.
  *  nickname, connected, highlight
  */
-export default function Avatar({ seat, avatar, lookRef, handRef, nickname, connected = true, highlight = false, bubble = null }) {
+export default function Avatar({ seat, avatar, lookRef, handRef, faceRef, nickname, connected = true, highlight = false, bubble = null }) {
   const headRef = useRef();
   const groupRef = useRef();
 
@@ -77,6 +77,51 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
     headRef.current.rotation.x += (wantPitch - headRef.current.rotation.x) * k;
   });
 
+  // ── 표정: 얼굴 연동 값이 오면 그걸 쓰고, 없으면 가끔 저절로 깜빡인다 ──
+  const eyeRefs = [useRef(), useRef()]; // [왼눈(-x), 오른눈(+x)]
+  const browRefs = [useRef(), useRef()];
+  const mouthRef = useRef();
+  const idle = useRef({ next: performance.now() + 2000, until: 0 });
+  useFrame(() => {
+    const now = performance.now();
+    const f = faceRef?.current;
+    const live = f && !f.off && now - f.t < FACE.staleAfter;
+    let bl, br, wl, wr, j, s, b;
+    if (live) {
+      const x = FACE.exaggerate;
+      ({ bl, br, wl, wr, j, s, b } = f);
+      [wl, wr, j, s, b] = [wl, wr, j, s, b].map((v) => Math.min(1, v * x));
+    } else {
+      // 자동 깜빡임: 정해진 간격마다 0.15초
+      const I = idle.current;
+      if (now > I.next) {
+        I.until = now + 150;
+        I.next = now + (FACE.idleBlinkMin + Math.random() * (FACE.idleBlinkMax - FACE.idleBlinkMin)) * 1000;
+      }
+      bl = br = now < I.until ? 1 : 0;
+      wl = wr = j = s = b = 0;
+    }
+    // 눈: 세로로 눌러서 감기, 크게 뜨면 조금 커짐
+    [bl, br].forEach((blink, i) => {
+      const e = eyeRefs[i].current;
+      if (!e) return;
+      const wide = i === 0 ? wl : wr;
+      const open = Math.max(0.08, 1 - blink * 0.95);
+      e.scale.set(1 + wide * 0.15, open * (1 + wide * 0.35), 1);
+    });
+    // 눈썹: 위로 올라가고, 놀라면 더
+    browRefs.forEach((r, i) => {
+      if (!r.current) return;
+      const lift = (b * 0.6 + (i === 0 ? wl : wr) * 0.4) * AVATAR.headRadius * 0.18;
+      r.current.position.y = BROW_Y + lift;
+    });
+    // 입: 벌리면 세로로, 웃으면 가로로 넓어지고 살짝 올라감
+    if (mouthRef.current) {
+      mouthRef.current.scale.set(1 + s * 0.7, 0.18 + j * 1.6 + s * 0.15, 1);
+      mouthRef.current.position.y = MOUTH_Y + s * AVATAR.headRadius * 0.05;
+    }
+  });
+
   const bodyY = SEAT_HEIGHT + AVATAR.bodyHeight / 2;
   const headY = SEAT_HEIGHT + AVATAR.bodyHeight + AVATAR.headRadius * 0.9;
   const opacity = connected ? 1 : 0.35;
@@ -109,8 +154,8 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
           <meshStandardMaterial color={avatar.head} transparent opacity={opacity} />
         </mesh>
         {/* 눈: 얼굴 앞면(-Z). 흰자 위에 눈동자를 올려서 얼굴색이 어두워도 보이게 한다 */}
-        {[-1, 1].map((s) => (
-          <group key={s} position={[s * AVATAR.headRadius * 0.38, AVATAR.headRadius * 0.15, -AVATAR.headRadius * 0.86]}>
+        {[-1, 1].map((s, i) => (
+          <group key={s} ref={eyeRefs[i]} position={[s * AVATAR.headRadius * 0.38, AVATAR.headRadius * 0.15, -AVATAR.headRadius * 0.86]}>
             <mesh>
               <sphereGeometry args={[AVATAR.eyeRadius * 1.9, 14, 10]} />
               <meshStandardMaterial color={AVATAR.eyeWhiteColor} roughness={0.3} />
@@ -121,6 +166,18 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
             </mesh>
           </group>
         ))}
+        {/* 눈썹 */}
+        {[-1, 1].map((s, i) => (
+          <mesh key={s} ref={browRefs[i]} position={[s * AVATAR.headRadius * 0.38, BROW_Y, -AVATAR.headRadius * 0.9]} rotation={[0, 0, -s * 0.12]}>
+            <boxGeometry args={[AVATAR.headRadius * 0.34, AVATAR.headRadius * 0.06, AVATAR.headRadius * 0.06]} />
+            <meshStandardMaterial color={FACE.browColor} />
+          </mesh>
+        ))}
+        {/* 입: 머리 아래쪽 앞면에 붙은 납작한 타원 */}
+        <mesh ref={mouthRef} position={[0, MOUTH_Y, -AVATAR.headRadius * 0.935]} rotation={[-0.4, Math.PI, 0]}>
+          <circleGeometry args={[AVATAR.headRadius * 0.2, 24]} />
+          <meshStandardMaterial color={FACE.mouthColor} side={THREE.DoubleSide} />
+        </mesh>
       </group>
 
       {/* 말풍선 (채팅 / 이모지) */}
@@ -142,6 +199,8 @@ export default function Avatar({ seat, avatar, lookRef, handRef, nickname, conne
 }
 
 export const SEAT_HEIGHT = 0.45;
+const BROW_Y = AVATAR.headRadius * 0.48; // 눈썹 기본 높이 (머리 중심 기준)
+const MOUTH_Y = -AVATAR.headRadius * 0.38; // 입 높이
 
 function normalizeAngle(a) {
   while (a > Math.PI) a -= Math.PI * 2;
