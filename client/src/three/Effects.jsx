@@ -34,6 +34,35 @@ function SymbolSprite({ symbol, color, spriteRef, size = 1, depthTest = true }) 
   return <sprite ref={spriteRef} material={mat} scale={[size, size, 1]} />;
 }
 
+/** 문장 뒤에 깔리는 둥근 빛무리 (가운데 밝고 가장자리로 투명). 항상 카메라를 본다. */
+const glowTexture = (() => {
+  let tex = null;
+  return () => {
+    if (tex) return tex;
+    const size = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = size;
+    const ctx = canvas.getContext("2d");
+    const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+    g.addColorStop(0, "rgba(255,255,255,0.95)");
+    g.addColorStop(0.35, "rgba(255,255,255,0.45)");
+    g.addColorStop(0.7, "rgba(255,255,255,0.1)");
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, size, size);
+    tex = new THREE.CanvasTexture(canvas);
+    return tex;
+  };
+})();
+
+function Glow({ glowRef, color }) {
+  const mat = useMemo(
+    () => new THREE.SpriteMaterial({ map: glowTexture(), color, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+    [color]
+  );
+  return <sprite ref={glowRef} material={mat} />;
+}
+
 /** 바닥과 평행한 빛 고리. 퍼지면서 흐려진다. */
 function Ring({ ringRef, color }) {
   return (
@@ -101,6 +130,7 @@ function Particles({ color, start, duration, count = EFFECTS.particleCount, dire
 export function Emblem({ position, symbol, color, start, duration = EFFECTS.emblemDuration, scale = 1, onDone, verdict = null, depthTest = true }) {
   const group = useRef();
   const sprite = useRef();
+  const glow = useRef();
   const ring = useRef();
   const done = useRef(false);
   const size = EFFECTS.emblemSize * scale;
@@ -131,6 +161,11 @@ export function Emblem({ position, symbol, color, start, duration = EFFECTS.embl
         sprite.current.position.y = 0.04 * Math.sin(t * 2.2); // 살짝 둥실
       }
     }
+    if (glow.current) {
+      const g = size * EFFECTS.glowScale * (0.6 + 0.4 * easeOutBack(inT)) * (1 + 0.05 * Math.sin(t * 3));
+      glow.current.scale.set(g, g, 1);
+      glow.current.material.opacity = 0.85 * alpha * (verdict === "broken" ? 0.4 : 1);
+    }
     if (ring.current) {
       const r = verdict ? 0.35 : EFFECTS.ringMaxRadius;
       const rt = verdict ? clamp01(t / 0.6) : clamp01(t / 1.1);
@@ -142,12 +177,15 @@ export function Emblem({ position, symbol, color, start, duration = EFFECTS.embl
 
   return (
     <group ref={group} position={position}>
+      <group position={[0, 0, -0.02]}>
+        <Glow glowRef={glow} color={tint} />
+      </group>
       <SymbolSprite symbol={symbol} color={tint} spriteRef={sprite} size={size} depthTest={depthTest} />
       <group position={[0, -size * 0.55, 0]}>
         <Ring ringRef={ring} color={tint} />
       </group>
       <group position={[0, -size * 0.4, 0]}>
-        <Particles color={tint} start={start} duration={duration} direction={verdict === "broken" ? -1 : 1} count={verdict === "broken" ? 18 : EFFECTS.particleCount} />
+        <Particles color={tint} start={start} duration={duration} direction={verdict === "broken" ? -1 : 1} count={verdict === "broken" ? 24 : EFFECTS.particleCount} spread={size * 0.45} />
       </group>
     </group>
   );

@@ -324,10 +324,12 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
 /** 자리의 동전 더미 위치 (카드 오른쪽) — 자리 그룹 로컬 좌표. SeatProps와 coinPileWorld가 같은 값을 쓴다. */
 const PILE_LOCAL = [PROPS.cardWidth + 0.12, 0, 0.02];
 
-/** 자리에 앉은 아바타의 머리 위(문장 띄울 자리) 세계 좌표 */
+/** 능력 문장을 띄울 자리: 아바타 등 뒤(테이블 반대쪽), 어깨 위쪽. 아바타는 yaw 방향(-Z 기준)으로 테이블을 본다 */
 function headTopWorld(seat) {
   const [x, , z] = seat.position;
-  return [x, SEAT_HEIGHT + AVATAR.bodyHeight + AVATAR.headRadius * 1.9 + EFFECTS.emblemHeight, z];
+  const bx = Math.sin(seat.yaw); // 등 뒤 방향 = 정면의 반대
+  const bz = Math.cos(seat.yaw);
+  return [x + bx * EFFECTS.emblemBack, SEAT_HEIGHT + EFFECTS.emblemHeight, z + bz * EFFECTS.emblemBack];
 }
 /** 아바타 가슴 높이 세계 좌표 (빛줄기 시작/끝) */
 function chestWorld(seat) {

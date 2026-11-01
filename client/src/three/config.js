@@ -150,21 +150,23 @@ export const COINS = {
 
 // 능력 사용 연출 (머리 위 문장, 입자, 빛줄기, 방패, 도전)
 export const EFFECTS = {
-  emblemHeight: 0.42, // 머리 위로 띄우는 높이
-  emblemSize: 0.34, // 문장 크기 (한 변)
-  emblemDuration: 2.6, // 문장이 떠 있는 시간 (초)
-  ringMaxRadius: 0.55, // 퍼지는 빛 고리 최대 반지름
-  particleCount: 32, // 입자 수
-  particleSize: 0.045, // 입자 크기
+  emblemHeight: 0.95, // 문장 중심 높이 (의자 기준). 등 뒤 어깨 위쪽
+  emblemSize: 1.05, // 문장 크기 (한 변). 등 뒤에 크게
+  emblemDuration: 5.0, // 문장이 떠 있는 시간 (초)
+  ringMaxRadius: 1.1, // 퍼지는 빛 고리 최대 반지름
+  particleCount: 70, // 입자 수
+  particleSize: 0.06, // 입자 크기
   particleRise: 0.9, // 입자가 올라가는 속도 (m/s)
   beamDuration: 0.5, // 대상에게 뻗는 빛줄기 시간
   beamRadius: 0.025,
-  shieldDuration: 1.6, // 방패 유지 시간
+  shieldDuration: 3.0, // 방패 유지 시간
   shieldRadius: 0.32,
   exclaimDuration: 0.9, // 도전 느낌표 시간
-  verdictDuration: 1.4, // 확정/깨짐 연출 시간
+  verdictDuration: 2.5, // 확정/깨짐 연출 시간
+  emblemBack: 0.55, // 아바타 등 뒤로 띄우는 거리 (테이블 반대쪽)
+  glowScale: 2.1, // 문장 뒤 빛무리 크기 (문장 크기 대비)
   selfOffset: [0, 0.52, -1.0], // 내가 쓸 때 시야 안에 띄우는 위치 (카메라 기준). 정면 상대와 겹치지 않게 위쪽
-  selfScale: 0.55, // 내 시야 연출의 크기 비율
+  selfScale: 0.3, // 내 시야 연출의 크기 비율
   colors: {
     coin: "#e2b53d", // 수입/해외 원조
     coup: "#ff3b3b", // 쿠
