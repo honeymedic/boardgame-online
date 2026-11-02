@@ -143,7 +143,7 @@ export function Arm({ shoulder, target, bendHint, color, handColor, holdingCard 
  *  - 왼손: 카드를 들었으면(holdIndex) 카드 위치로
  *  - 손 위치와 동작을 서버로 보낸다
  */
-export function MyHands({ holdCount = 0, coinHeld = 0, onPutDown, onSendHand, onSendGesture, avatar }) {
+export function MyHands({ holdCount = 0, heldIndices = [], coinHeld = 0, onPutDown, onSendHand, onSendGesture, avatar }) {
   const holdIndex = holdCount > 0 ? holdCount : null; // 서버에는 든 장수를 보낸다 (없으면 null)
   const { camera, gl } = useThree();
   const rightShoulder = useMemo(() => new THREE.Vector3(), []);
@@ -236,14 +236,16 @@ export function MyHands({ holdCount = 0, coinHeld = 0, onPutDown, onSendHand, on
     const now = performance.now();
     const l = lastSent.current;
     const moved = !Number.isFinite(l.x) || Math.abs(l.x - rightTarget.x) + Math.abs(l.y - rightTarget.y) + Math.abs(l.z - rightTarget.z) > 0.004;
-    if (((moved || l.hold !== holdIndex || l.coin !== coinHeld) && now - l.t >= HAND.sendInterval) || now - l.t >= HAND.keepalive) {
+    const heldKey = heldIndices.join(",");
+    if (((moved || l.hold !== holdIndex || l.heldKey !== heldKey || l.coin !== coinHeld) && now - l.t >= HAND.sendInterval) || now - l.t >= HAND.keepalive) {
       l.t = now;
       l.x = rightTarget.x;
       l.y = rightTarget.y;
       l.z = rightTarget.z;
       l.hold = holdIndex;
+      l.heldKey = heldKey;
       l.coin = coinHeld;
-      onSendHand?.({ x: rightTarget.x, y: rightTarget.y, z: rightTarget.z, hold: holdIndex ?? null, coin: coinHeld });
+      onSendHand?.({ x: rightTarget.x, y: rightTarget.y, z: rightTarget.z, hold: holdIndex ?? null, held: heldIndices, coin: coinHeld });
     }
   });
 

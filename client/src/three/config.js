@@ -165,8 +165,10 @@ export const EFFECTS = {
   verdictDuration: 2.5, // 확정/깨짐 연출 시간
   emblemBack: 0.55, // 아바타 등 뒤로 띄우는 거리 (테이블 반대쪽)
   glowScale: 2.1, // 문장 뒤 빛무리 크기 (문장 크기 대비)
-  selfOffset: [0, 0.52, -1.0], // 내가 쓸 때 시야 안에 띄우는 위치 (카메라 기준). 정면 상대와 겹치지 않게 위쪽
-  selfScale: 0.3, // 내 시야 연출의 크기 비율
+  selfOffset: [0, 0.45, -1.0], // 내가 쓸 때 시야 안에 띄우는 위치 (카메라 기준). 화면 위쪽 끝
+  selfScale: 0.11, // 내 시야 아이콘 크기 비율 (빛무리·입자 없이 상징만)
+  selfOpacity: 0.85, // 내 시야 아이콘 진하기
+  brokenFallSpeed: 1.6, // 블러핑이 걸렸을 때 상징이 떨어지는 속도
   colors: {
     coin: "#e2b53d", // 수입/해외 원조
     coup: "#ff3b3b", // 쿠

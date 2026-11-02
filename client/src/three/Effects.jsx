@@ -128,7 +128,7 @@ function Particles({ color, start, duration, count = EFFECTS.particleCount, dire
  * 머리 위 문장: 상징 + 빛 고리 + 입자. 떠오르며 커지고(0.3초), 유지, 마지막 0.5초에 흐려진다.
  * verdict: "confirm" | "broken" | null — 확정(금빛 번쩍) / 깨짐(회색, 흔들리며 조각 낙하)
  */
-export function Emblem({ position, symbol, color, start, duration = EFFECTS.emblemDuration, scale = 1, onDone, verdict = null, depthTest = true, hold = false }) {
+export function Emblem({ position, symbol, color, start, duration = EFFECTS.emblemDuration, scale = 1, onDone, verdict = null, depthTest = true, hold = false, minimal = false }) {
   const group = useRef();
   const sprite = useRef();
   const glow = useRef();
@@ -152,7 +152,7 @@ export function Emblem({ position, symbol, color, start, duration = EFFECTS.embl
     }
     const inT = clamp01(t / 0.3);
     const outT = hold ? 0 : clamp01((t - (duration - 0.5)) / 0.5);
-    const alpha = (1 - outT) * (verdict === "broken" ? 1 - p * 0.5 : 1);
+    const alpha = (1 - outT) * (verdict === "broken" ? 1 - p * 0.7 : 1) * (minimal ? EFFECTS.selfOpacity : 1);
     if (sprite.current) {
       // 확정이면 1.3배로 커지며 처음 0.8초 동안 번쩍인다
       const confirmBoost = verdict === "confirm" ? 1.3 * (1 + 0.08 * Math.sin(t * 10) * Math.max(0, 1 - t / 0.8)) : 1;
@@ -160,8 +160,11 @@ export function Emblem({ position, symbol, color, start, duration = EFFECTS.embl
       sprite.current.scale.set(s, s, 1);
       sprite.current.material.opacity = alpha;
       if (verdict === "broken") {
-        sprite.current.position.x = Math.sin(t * 40) * 0.015 * (1 - p);
-        sprite.current.position.y = -p * p * 0.25; // 서서히 떨어짐
+        // 처음 0.35초는 부르르 떨다가, 그 뒤로 기울어지며 아래로 뚝 떨어진다
+        const fall = Math.max(0, t - 0.35);
+        sprite.current.position.x = Math.sin(t * 45) * 0.03 * Math.max(0, 1 - t / 0.35);
+        sprite.current.position.y = -fall * fall * EFFECTS.brokenFallSpeed;
+        sprite.current.material.rotation = -fall * 1.4;
       } else {
         sprite.current.position.y = 0.04 * Math.sin(t * 2.2); // 살짝 둥실
       }
@@ -180,6 +183,15 @@ export function Emblem({ position, symbol, color, start, duration = EFFECTS.embl
       ring.current.material.opacity = 0.9 * (1 - rt);
     }
   });
+
+  // minimal: 내 시야용. 상징 하나만, 빛무리/고리/입자 없이
+  if (minimal) {
+    return (
+      <group ref={group} position={position}>
+        <SymbolSprite symbol={symbol} color={tint} spriteRef={sprite} size={size} depthTest={depthTest} />
+      </group>
+    );
+  }
 
   return (
     <group ref={group} position={position}>

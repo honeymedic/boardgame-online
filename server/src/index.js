@@ -137,8 +137,10 @@ io.on("connection", (socket) => {
     const x = Number(d?.x), y = Number(d?.y), z = Number(d?.z);
     if (![x, y, z].every(Number.isFinite)) return;
     const hold = Number.isInteger(d?.hold) ? d.hold : null;
+    // 왼손에 든 카드 번호들 (0 또는 1). 상대 화면에서 테이블 위 그 카드를 숨기는 데 쓴다
+    const held = Array.isArray(d?.held) ? [...new Set(d.held.filter((i) => i === 0 || i === 1))] : [];
     const coin = Number.isInteger(d?.coin) ? Math.max(0, Math.min(50, d.coin)) : d?.coin === true ? 1 : 0; // 오른손에 쥔 동전 개수
-    socket.to(socket.data.code).emit("hand", { playerId, x, y, z, hold, coin });
+    socket.to(socket.data.code).emit("hand", { playerId, x, y, z, hold, held, coin });
   });
 
   // 손 동작 중계: { type, target: [x,y,z] } — 예: 좌클릭 휘두르기

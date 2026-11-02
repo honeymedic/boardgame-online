@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { EffectComposer, Bloom } from "@react-three/postprocessing";
 import { TABLE, PROPS, ROOM, STRING_LIGHTS, COINS } from "./config.js";
@@ -64,11 +64,12 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
     const onLook = ({ playerId: id, yaw, pitch }) => {
       getLookRef(id).current = { yaw, pitch };
     };
-    const onHand = ({ playerId: id, x, y, z, hold, coin }) => {
+    const onHand = ({ playerId: id, x, y, z, hold, held, coin }) => {
       const ref = getHandRef(id);
       if (!ref.current.pos) ref.current.pos = new THREE.Vector3();
       ref.current.pos.set(x, y, z);
       ref.current.hold = hold;
+      ref.current.held = Array.isArray(held) ? held : [];
       ref.current.coin = Number(coin) || 0;
     };
     const onGesture = ({ playerId: id, type, target }) => {
@@ -176,13 +177,26 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
 
   // ── 능력 사용 연출: 게임 뷰 전후의 로그를 비교해서 이벤트를 뽑고, 자리 위치에 연출을 띄운다 ──
   const [effects, setEffects] = useState([]);
+  const [resolved, setResolved] = useState(() => new Set()); // 판정이 난 주장 키: 유지 오라를 바로 지운다
   const prevGame = useRef(null);
   const effectId = useRef(0);
-  useEffect(() => {
+  // 화면에 그리기 전에 처리해야 판정 직후 원래 오라가 한 프레임도 남지 않는다 → useLayoutEffect
+  useLayoutEffect(() => {
     const prev = prevGame.current;
     prevGame.current = game;
+    if (!game?.pending && resolved.size > 0) setResolved(new Set()); // 턴이 끝나면 초기화
     if (!game || !prev) return;
     const events = effectsFromGame(prev, game, seatPlayers);
+    // 판정이 난 주장/막기는 유지 오라에서 뺀다
+    const newlyResolved = [];
+    for (const ev of events) {
+      if (ev.type !== "verdict") continue;
+      const pa = prev.pending?.action;
+      const pb = prev.pending?.block;
+      if (pa && pa.actorId === ev.playerId) newlyResolved.push(claimKey(pa, prev.turnPlayerId));
+      if (pb && pb.blockerId === ev.playerId) newlyResolved.push(blockKey(pb, prev.turnPlayerId));
+    }
+    if (newlyResolved.length) setResolved((r) => new Set([...r, ...newlyResolved]));
     if (events.length === 0) return;
     const now = performance.now();
     const seatOf = (id) => seatPlayers.findIndex((p) => p.id === id);
@@ -241,23 +255,23 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
     const ai = seatOf(a.actorId);
     if (ai >= 0) {
       const { symbol, color } = symbolFor(a.type, a.claim);
-      const key = `claim:${a.actorId}:${a.type}:${game.turnPlayerId}`;
-      list.push({ key, kind: "emblem", position: headTopWorld(seats[ai]), symbol, color, self: a.actorId === playerId, start: startFor(key) });
+      const key = claimKey(a, game.turnPlayerId);
+      if (!resolved.has(key)) list.push({ key, kind: "emblem", position: headTopWorld(seats[ai]), symbol, color, self: a.actorId === playerId, start: startFor(key) });
     }
     if (pend.block) {
       const bi = seatOf(pend.block.blockerId);
       if (bi >= 0) {
         const { symbol, color } = symbolFor(null, pend.block.character);
-        const key = `block:${pend.block.blockerId}:${pend.block.character}:${game.turnPlayerId}`;
-        list.push({ key, kind: "emblem", position: headTopWorld(seats[bi]), symbol, color, self: pend.block.blockerId === playerId, start: startFor(key) });
+        const key = blockKey(pend.block, game.turnPlayerId);
+        if (!resolved.has(key)) list.push({ key, kind: "emblem", position: headTopWorld(seats[bi]), symbol, color, self: pend.block.blockerId === playerId, start: startFor(key) });
         // 내 방패는 카메라 바로 앞을 가리므로 그리지 않는다 (내 시야엔 위쪽 문장으로만)
-        if (pend.block.blockerId !== playerId) list.push({ key: key + ":shield", kind: "shield", position: shieldWorld(seats[bi]), yaw: seats[bi].yaw, color, start: startFor(key) });
+        if (pend.block.blockerId !== playerId && !resolved.has(key)) list.push({ key: key + ":shield", kind: "shield", position: shieldWorld(seats[bi]), yaw: seats[bi].yaw, color, start: startFor(key) });
       }
     }
     // 더 이상 없는 키는 정리
     for (const k of [...holdStarts.current.keys()]) if (!list.some((e) => e.key === k || e.key + ":shield" === k)) holdStarts.current.delete(k);
     return list;
-  }, [game, seats, seatPlayers]);
+  }, [game, seats, seatPlayers, resolved]);
 
   const sendLook = (look) => socket.emit("look", look);
   const sendHand = (h) => socket.emit("hand", h);
@@ -271,7 +285,7 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
     <Canvas shadows camera={{ fov: 60, near: 0.05, far: 50 }} style={{ background: ROOM.floorColor }}>
       <PointerInstaller />
       <FirstPersonLook eye={eyePosition(mySeat)} baseYaw={mySeat.yaw} onLook={sendLook} />
-      <MyHands holdCount={myHeld.length} coinHeld={coinHeld} onPutDown={putDownAll} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
+      <MyHands holdCount={myHeld.length} heldIndices={myHeld} coinHeld={coinHeld} onPutDown={putDownAll} onSendHand={sendHand} onSendGesture={sendGesture} avatar={me?.avatar} />
 
       <ambientLight intensity={ROOM.ambient} />
       <pointLight
@@ -320,12 +334,12 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
         {effects
           .filter((e) => e.self && e.kind === "emblem")
           .map((e) => (
-            <Emblem key={e.id} position={[0, 0, 0]} symbol={e.symbol} color={e.color} start={e.start} duration={e.duration} scale={(e.scale ?? 1) * EFFECTS.selfScale} verdict={e.verdict} depthTest={false} onDone={() => removeEffect(e.id)} />
+            <Emblem key={e.id} position={[0, 0, 0]} symbol={e.symbol} color={e.color} start={e.start} duration={e.duration} scale={(e.scale ?? 1) * EFFECTS.selfScale} verdict={e.verdict} depthTest={false} minimal onDone={() => removeEffect(e.id)} />
           ))}
         {pendingEffects
           .filter((e) => e.self && e.kind === "emblem")
           .map((e) => (
-            <Emblem key={e.key} position={[0, 0, 0]} symbol={e.symbol} color={e.color} start={e.start} scale={EFFECTS.selfScale} depthTest={false} hold />
+            <Emblem key={e.key} position={[0, 0, 0]} symbol={e.symbol} color={e.color} start={e.start} scale={EFFECTS.selfScale} depthTest={false} minimal hold />
           ))}
       </SelfAnchor>
 
@@ -352,6 +366,7 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
             held={myHeld}
             onPick={pickCard}
             onPickCoin={openCoinPrompt}
+            handRef={i === myIndex ? null : getHandRef(p.id)}
           />
         </group>
       ))}
@@ -373,6 +388,10 @@ export default function TableScene({ players, game = null, bubbles = {}, highlig
 
 /** 자리의 동전 더미 위치 (카드 오른쪽) — 자리 그룹 로컬 좌표. SeatProps와 coinPileWorld가 같은 값을 쓴다. */
 const PILE_LOCAL = [PROPS.cardWidth + 0.12, 0, 0.02];
+
+/** 유지 오라 키: 같은 턴의 같은 주장이면 같은 키 */
+const claimKey = (a, turn) => `claim:${a.actorId}:${a.type}:${turn}`;
+const blockKey = (b, turn) => `block:${b.blockerId}:${b.character}:${turn}`;
 
 /** 능력 문장을 띄울 자리: 아바타 등 뒤(테이블 반대쪽), 어깨 위쪽. 아바타는 yaw 방향(-Z 기준)으로 테이블을 본다 */
 function headTopWorld(seat) {
@@ -476,7 +495,7 @@ function PointerInstaller() {
  *  cards: 게임 뷰의 카드 [{character|null, revealed}] (게임 중). null이면 sampleHand로 임시 카드.
  *  mine:  내 자리면 카드/동전을 조준해 집을 수 있다. 공개된(revealed) 카드는 못 집는다.
  */
-function SeatProps({ seat, coins, cards, mine = false, sampleHand = null, held = [], onPick, onPickCoin }) {
+function SeatProps({ seat, coins, cards, mine = false, sampleHand = null, held = [], onPick, onPickCoin, handRef = null }) {
   const spot = tableSpotFor(seat, PROPS.cardDistanceFromEdge);
   const yaw = seat.yaw;
   return (
@@ -492,10 +511,25 @@ function SeatProps({ seat, coins, cards, mine = false, sampleHand = null, held =
         return mine ? (
           <HandCard key={s} restPosition={pos} character={card.character} index={idx} held={held} onPick={onPick} />
         ) : (
-          <Card3D key={s} position={pos} />
+          <OpponentCard key={s} position={pos} index={idx} handRef={handRef} />
         );
       })}
       <CoinPile position={PILE_LOCAL} count={coins} interactive={mine} onPick={onPickCoin} />
+    </group>
+  );
+}
+
+/** 상대의 뒷면 카드. 그 사람이 이 카드를 손에 들고 있으면 테이블에서 숨긴다 (손에 든 카드와 겹쳐 보이지 않게) */
+function OpponentCard({ position, index, handRef }) {
+  const ref = useRef();
+  useFrame(() => {
+    if (!ref.current) return;
+    const held = handRef?.current?.held;
+    ref.current.visible = !(Array.isArray(held) && held.includes(index));
+  });
+  return (
+    <group ref={ref}>
+      <Card3D position={position} />
     </group>
   );
 }
